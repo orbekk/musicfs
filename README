@@ -1,0 +1,2 @@
+MP3FS is a FUSE module implementing a mp3 filesystem in userland. The purpose of
+mp3fs is to provide filesystem hierarchy based on id3 tags of mp3-files.
