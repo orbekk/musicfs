@@ -23,7 +23,7 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 		return 0;
 	}
 
-	return ENOENT;
+	return -ENOENT;
 }
 
 static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
@@ -44,7 +44,7 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 	if (strcmp (path, "/MP3Z") == 0)
 		return 0;
 
-	return ENOENT;
+	return -ENOENT;
 }
 
 static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
@@ -55,7 +55,7 @@ static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
 		return 12;
 	}
 
-	return ENOENT;
+	return -ENOENT;
 }
 
 static struct fuse_operations mp3_oper = {
