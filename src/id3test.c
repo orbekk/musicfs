@@ -18,7 +18,7 @@ int main (int argc, char **argv)
 
 	ID3Field *field = ID3Frame_GetField (artist_frame, ID3FN_TEXT);
 	char *artist = malloc (sizeof(char) * (ID3Field_Size (field) + 1));
-	ID3Field_GetASCII (field, artist, 254);
+	ID3Field_GetASCII (field, artist, ID3Field_Size (field));
 
 	printf("Artist: %s\n", artist);
 
