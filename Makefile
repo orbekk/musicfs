@@ -1,4 +1,4 @@
-CFLAGS  = -Wall -Iinclude/ \
+CFLAGS  = -Wall -std=c99 -D_BSD_SOURCE -Iinclude/ \
 	`pkg-config fuse --cflags` 
 
 LD_ADD  = -lid3 \
