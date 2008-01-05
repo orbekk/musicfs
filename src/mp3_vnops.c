@@ -34,6 +34,11 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	filler (buf, "..", NULL, 0);
 	filler (buf, "MP3Z", NULL, 0);
 
+	/*
+	 * 1. Parse the path.
+	 * 2. Find the mp3s that matches the tags given from the path.
+	 * 3. Return the list of those mp3s.
+	 */
 	return 0;
 }
 
@@ -41,7 +46,14 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 {
 	if (strcmp (path, "/MP3Z") == 0)
 		return 0;
-
+	/*
+	 * 1. Have a lookup cache for names?.
+	 *    Parse Genre, Album, Artist etc.
+	 * 2. Find MP3s that match. XXX what do we do with duplicates? just
+	 *    return the first match?
+	 * 3. Put the mnode of the mp3 in our cache.
+	 * 4. Signal in mnode that the mp3 is being read?
+	 */
 	return -ENOENT;
 }
 
@@ -53,6 +65,11 @@ static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
 		return 12;
 	}
 
+	/*
+	 * 1. Find the mnode given the path. If not in cache, read through mp3
+	 *    list to find it. 
+	 * 2. Read the offset of the mp3 and return the data.
+	 */
 	return -ENOENT;
 }
 
