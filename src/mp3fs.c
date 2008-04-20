@@ -4,13 +4,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fuse.h>
+#include <fuse_opt.h>
+#include <mp3fs.h>
 
-#include "mp3_vnops.c"
-#include "mp3_opt_parse.c"
-
-/* static struct fuse_module mp3_mod { */
-/* 	.name = "MP3FS" */
-/* }; */
+/* Prototypes. */
+static int mp3fs_opt_proc (void *, const char *, int, struct fuse_args *);
 
 /* Just for testing the argument parsing. TODO: fix something better */
 char *sourcedir = NULL;
@@ -23,5 +21,18 @@ main(int argc, char **argv)
 	if (fuse_opt_parse(&args, NULL, NULL, mp3fs_opt_proc) != 0)
 		exit (1);
 
-	return (fuse_main (args.argc, args.argv, &mp3_oper, NULL));
+	printf("Starting up mp3fs\n");
+	mp3_run(&args);
+	printf("Shutting down mp3fs\n");
+}
+
+static int mp3fs_opt_proc (void *data, const char *arg, int key,
+						   struct fuse_args *outargs)
+{
+	if (key == FUSE_OPT_KEY_NONOPT && !sourcedir) {
+		/* The source directory isn't already set, let's do it */
+		sourcedir = arg;
+		return (0);
+	}
+	return (-1);
 }
