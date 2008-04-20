@@ -11,18 +11,18 @@
 static int mp3fs_opt_proc (void *, const char *, int, struct fuse_args *);
 
 /* Just for testing the argument parsing. TODO: fix something better */
-char *sourcedir = NULL;
+const char *sourcedir = NULL;
 
 int
 main(int argc, char **argv)
 {
-	struct fuse_args args = FUSE_ARGS_INIT (argc, argv);
+/*	struct fuse_args args = FUSE_ARGS_INIT (argc, argv);
 
 	if (fuse_opt_parse(&args, NULL, NULL, mp3fs_opt_proc) != 0)
-		exit (1);
+		exit (1);*/
 
 	printf("Starting up mp3fs\n");
-	mp3_run(&args);
+	mp3_run(argc, argv);
 	printf("Shutting down mp3fs\n");
 }
 

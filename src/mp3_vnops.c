@@ -81,8 +81,8 @@ static struct fuse_operations mp3_ops = {
 };
 
 int
-mp3_run(struct fuse_args *args)
+mp3_run(int argc, char **argv)
 {
 
-	return (fuse_main(args->argc, args->argv, &mp3_ops, NULL));
+	return (fuse_main(argc, argv, &mp3_ops, NULL));
 }
