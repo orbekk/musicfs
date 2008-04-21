@@ -3,7 +3,7 @@
 struct ID3Tag;
 
 struct mnode {
-	ID3Tag *tag;
-	void *data;
+	ID3Tag *cached_tag;
+	char *path;
 };
 #endif

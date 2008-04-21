@@ -5,6 +5,14 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <id3.h>
+#include <sys/types.h>
+#include <dirent.h>
+
+#define MAXPATHLEN 100000
+
+const char *musicpath = "/home/lulf/dev/mp3fs/music";
+
 
 static int mp3_getattr (const char *path, struct stat *stbuf)
 {
@@ -14,8 +22,8 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 		stbuf->st_nlink = 2;
 		return 0;
 	}
-	if (strcmp (path, "/MP3Z") == 0) {
-		stbuf->st_mode	= S_IFREG | 0444;
+	if (strcmp (path, "/Artists") == 0) {
+		stbuf->st_mode	= S_IFDIR | 0444;
 		stbuf->st_nlink = 1;
 		stbuf->st_size	= 12;
 		return 0;
@@ -27,24 +35,58 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
-	if (strcmp (path, "/") != 0)
-		return -ENOENT;
+	char *tmp;
+	char *parsepath, filepath[MAXPATHLEN];
+	char name[MAXPATHLEN];
+	DIR *musicdirp;
+	struct dirent *dp;
+	ID3Tag *tag;
+	ID3Frame *artist;
+	ID3Field *field;
 
 	filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
-	filler (buf, "MP3Z", NULL, 0);
+
+	if (!strcmp(path, "/")) {
+		filler (buf, "Artists", NULL, 0);
+		filler (buf, "Genres", NULL, 0);
+		return (0);
+	}
 
 	/*
 	 * 1. Parse the path.
 	 * 2. Find the mp3s that matches the tags given from the path.
 	 * 3. Return the list of those mp3s.
 	 */
+	if (!strcmp(path, "/Artists")) {
+		tag = ID3Tag_New();
+		/* List artists. */
+		musicdirp = opendir(musicpath);
+		while ((dp = readdir(musicdirp)) != NULL) {
+			if (!strcmp(dp->d_name, ".") ||
+			    !strcmp(dp->d_name, ".."))
+				continue;
+
+			snprintf(filepath, sizeof(filepath), "%s/%s",
+			    musicpath, dp->d_name);
+			ID3Tag_Link(tag, filepath);
+			artist = ID3Tag_FindFrameWithID(tag,
+			    ID3FID_LEADARTIST);
+			field = ID3Frame_GetField(artist, ID3FN_TEXT);
+			ID3Field_GetASCII(field, name,
+			    ID3Field_Size(field));
+			filler(buf, name, NULL, 0);
+		}
+		closedir(musicdirp);
+	} else if (!strcmp(path, "/Genres")) {
+		/* List genres. */
+	} 
 	return 0;
 }
 
 static int mp3_open (const char *path, struct fuse_file_info *fi)
 {
-	if (strcmp (path, "/MP3Z") == 0)
+	if (strcmp (path, "/Artists") == 0)
 		return 0;
 	/*
 	 * 1. Have a lookup cache for names?.
@@ -60,7 +102,7 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
 					 struct fuse_file_info *fi)
 {
-	if (strcmp (path, "/MP3Z") == 0) {
+	if (strcmp (path, "/Artists") == 0) {
 		memcpy (buf, "Oh you wish\n", 12);
 		return 12;
 	}
@@ -83,6 +125,17 @@ static struct fuse_operations mp3_ops = {
 int
 mp3_run(int argc, char **argv)
 {
+	/*
+	 * XXX: Build index of mp3's.
+	 */
 
+	/* Update tables. */
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s <mountpoint> <musicfolder>\n", argv[0]); 
+		return (-1);
+	}
+		
+/*	musicpath = argv[2];*/
+	
 	return (fuse_main(argc, argv, &mp3_ops, NULL));
 }
