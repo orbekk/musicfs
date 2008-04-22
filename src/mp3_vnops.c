@@ -32,19 +32,15 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 	return -ENOENT;
 }
 
+
 static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
 	char *tmp;
 	char *parsepath, filepath[MAXPATHLEN];
 	char name[MAXPATHLEN];
-	DIR *musicdirp;
-	struct dirent *dp;
-	ID3Tag *tag;
-	ID3Frame *artist;
-	ID3Field *field;
-
-	filler (buf, ".", NULL, 0);
+	struct stat st;
+		filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
 
 	if (!strcmp(path, "/")) {
@@ -59,28 +55,63 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 * 3. Return the list of those mp3s.
 	 */
 	if (!strcmp(path, "/Artists")) {
-		tag = ID3Tag_New();
 		/* List artists. */
-		musicdirp = opendir(musicpath);
-		while ((dp = readdir(musicdirp)) != NULL) {
-			if (!strcmp(dp->d_name, ".") ||
-			    !strcmp(dp->d_name, ".."))
-				continue;
+		/* XXX: traverse full dir. */
+		traverse_hierarchy(musicpath, mp3_artist, filler);
+		return (0);
+	}
+	return (-ENOENT);
+}
 
-			snprintf(filepath, sizeof(filepath), "%s/%s",
-			    musicpath, dp->d_name);
-			ID3Tag_Link(tag, filepath);
-			artist = ID3Tag_FindFrameWithID(tag,
-			    ID3FID_LEADARTIST);
-			field = ID3Frame_GetField(artist, ID3FN_TEXT);
-			ID3Field_GetASCII(field, name,
-			    ID3Field_Size(field));
-			filler(buf, name, NULL, 0);
-		}
-		closedir(musicdirp);
-	} else if (!strcmp(path, "/Genres")) {
-		/* List genres. */
-	} 
+struct filler_data {
+	void *buf;
+	fuse_fill_dir_t filler;
+
+};
+
+void
+traverse_hierarchy(char *dirpath, void (*fileop)(char *, void *), void *data)
+{
+	DIR *dirp;
+	struct dirent *dp;
+	char filepath[MAXPATHLEN];
+	dirp = opendir(dirpath);
+	while ((dp = readdir(dirp)) != NULL) {
+		if (!strcmp(dp->d_name, ".") ||
+		    !strcmp(dp->d_name, ".."))
+			continue;
+		
+		snprintf(filepath, sizeof(filepath), "%s/%s",
+		    musicpath, dp->d_name);
+		if (stat(filepath, &st) < 0)
+			err(1, "error doing stat on %s", filepath);
+		if (st.st_mode & S_IFDIR)
+			traverse_hierarchy(filepath, fileop, data);
+		if (!(st.st_mode & S_IFREG))
+			continue;
+		/* If it's a regular file, perform the operation. */
+		fileop(filepath, data);
+	}
+	closedir(dirp);
+	return (0);
+}
+
+void
+mp3_artist(char *filepath, void *data)
+{
+
+	ID3Tag *tag;
+	ID3Frame *artist;
+	ID3Field *field;
+	fuse_fill_dir_t filler = (fuse_fill_dir_t)data;
+
+	tag = ID3Tag_New();
+	ID3Tag_Link(tag, filepath);
+	artist = ID3Tag_FindFrameWithID(tag, ID3FID_LEADARTIST);
+	field = ID3Frame_GetField(artist, ID3FN_TEXT);
+	ID3Field_GetASCII(field, name, ID3Field_Size(field));
+	filler(buf, name, NULL, 0);
+	closedir(musicdirp);
 	return 0;
 }
 
