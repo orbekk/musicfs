@@ -13,6 +13,9 @@
 
 const char *musicpath = "/home/lulf/dev/mp3fs/music";
 
+void traverse_hierarchy(char *, void (*)(char *, void *), void *);
+void mp3_artist(char *, void *);
+
 
 static int mp3_getattr (const char *path, struct stat *stbuf)
 {
@@ -37,10 +40,9 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
 	char *tmp;
-	char *parsepath, filepath[MAXPATHLEN];
-	char name[MAXPATHLEN];
-	struct stat st;
-		filler (buf, ".", NULL, 0);
+	char *parsepath;
+
+	filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
 
 	if (!strcmp(path, "/")) {
@@ -70,6 +72,8 @@ traverse_hierarchy(char *dirpath, void (*fileop)(char *, void *), void *data)
 	DIR *dirp;
 	struct dirent *dp;
 	char filepath[MAXPATHLEN];
+	struct stat st;
+
 	dirp = opendir(dirpath);
 	while ((dp = readdir(dirp)) != NULL) {
 		if (!strcmp(dp->d_name, ".") ||
@@ -106,6 +110,7 @@ mp3_artist(char *filepath, void *data)
 	ID3Field *field;
 	fuse_fill_dir_t filler;
 	void *buf;
+	char name[MAXPATHLEN];
 
 	fd = (struct filler_data *)data;
 	filler = fd->filler;
@@ -117,7 +122,6 @@ mp3_artist(char *filepath, void *data)
 	field = ID3Frame_GetField(artist, ID3FN_TEXT);
 	ID3Field_GetASCII(field, name, ID3Field_Size(field));
 	filler(buf, name, NULL, 0);
-	closedir(musicdirp);
 	return 0;
 }
 
