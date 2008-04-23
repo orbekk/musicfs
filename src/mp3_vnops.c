@@ -63,11 +63,6 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	return (-ENOENT);
 }
 
-struct filler_data {
-	void *buf;
-	fuse_fill_dir_t filler;
-
-};
 
 void
 traverse_hierarchy(char *dirpath, void (*fileop)(char *, void *), void *data)
@@ -96,14 +91,25 @@ traverse_hierarchy(char *dirpath, void (*fileop)(char *, void *), void *data)
 	return (0);
 }
 
+struct filler_data {
+	void *buf;
+	fuse_fill_dir_t filler;
+};
+
+/* Retrieve artist name given a path. */
 void
 mp3_artist(char *filepath, void *data)
 {
-
+	struct filler_data *fd;
 	ID3Tag *tag;
 	ID3Frame *artist;
 	ID3Field *field;
-	fuse_fill_dir_t filler = (fuse_fill_dir_t)data;
+	fuse_fill_dir_t filler;
+	void *buf;
+
+	fd = (struct filler_data *)data;
+	filler = fd->filler;
+	buf = fd->buf;
 
 	tag = ID3Tag_New();
 	ID3Tag_Link(tag, filepath);
