@@ -15,9 +15,17 @@
 
 char *musicpath = "/home/lulf/dev/mp3fs/music";
 
-void traverse_hierarchy(char *, void (*)(char *, void *), void *);
-void mp3_artist(char *, void *);
+typedef void traverse_fn_t(char *, void *);
 
+void traverse_hierarchy(char *, traverse_fn_t, void *);
+traverse_fn_t mp3_artist;
+/*
+ * Data passed to traverse function pointers.'
+ */
+struct filler_data {
+	void *buf;
+	fuse_fill_dir_t filler;
+};
 
 static int mp3_getattr (const char *path, struct stat *stbuf)
 {
@@ -41,9 +49,12 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
+	struct filler_data fd;
 
 	filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
+	fd.buf = buf;
+	fd.filler = filler;
 
 	if (!strcmp(path, "/")) {
 		filler (buf, "Artists", NULL, 0);
@@ -58,13 +69,18 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 */
 	if (!strcmp(path, "/Artists")) {
 		/* List artists. */
-		/* XXX: traverse full dir. */
-		traverse_hierarchy(musicpath, mp3_artist, filler);
+		traverse_hierarchy(musicpath, mp3_artist, &fd);
 		return (0);
 	}
 	return (-ENOENT);
 }
 
+
+void
+call_lol(char *path)
+{
+	printf("Path %s\n", path);
+}
 
 /*
  * Traverse a hierarchy given a directory path. Perform fileoperations on the
@@ -72,14 +88,21 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
  * sub-directories.
  */
 void
-traverse_hierarchy(char *dirpath, void (*fileop)(char *, void *), void *data)
+traverse_hierarchy(char *dirpath, traverse_fn_t fileop, void *data)
 {
 	DIR *dirp;
 	struct dirent *dp;
 	char filepath[MAXPATHLEN];
 	struct stat st;
+	struct filler_data *fd;
 
+	fd = data;
 	dirp = opendir(dirpath);
+	if (dirp == NULL) {
+		fd->filler(fd->buf, "lolerr", NULL, 0);
+		return;
+	}
+	
 	/* Loop through all files. */
 	while ((dp = readdir(dirp)) != NULL) {
 		if (!strcmp(dp->d_name, ".") ||
@@ -87,24 +110,23 @@ traverse_hierarchy(char *dirpath, void (*fileop)(char *, void *), void *data)
 			continue;
 		
 		snprintf(filepath, sizeof(filepath), "%s/%s",
-		    musicpath, dp->d_name);
+		    dirpath, dp->d_name);
 		if (stat(filepath, &st) < 0)
 			err(1, "error doing stat on %s", filepath);
 		/* Recurse if it's a directory. */
-		if (st.st_mode & S_IFDIR)
+		if (st.st_mode & S_IFDIR)  {
 			traverse_hierarchy(filepath, fileop, data);
-		if (!(st.st_mode & S_IFREG))
 			continue;
+		}
 		/* If it's a regular file, perform the operation. */
-		fileop(filepath, data);
+		if (st.st_mode & S_IFREG) {
+			fileop(filepath, data);
+		}
 	}
 	closedir(dirp);
 }
 
-struct filler_data {
-	void *buf;
-	fuse_fill_dir_t filler;
-};
+
 
 /* 
  * Retrieve artist name given a file, and put in a buffer with a passed filler
@@ -130,10 +152,16 @@ mp3_artist(char *filepath, void *data)
 	tag = ID3Tag_New();
 	ID3Tag_Link(tag, filepath);
 	artist = ID3Tag_FindFrameWithID(tag, ID3FID_LEADARTIST);
+	if (artist == NULL)
+		return;
 	field = ID3Frame_GetField(artist, ID3FN_TEXT);
+	if (field == NULL)
+		return;
 	ID3Field_GetASCII(field, name, ID3Field_Size(field));
+	/* XXX: doesn't show up... why? */
 	filler(buf, name, NULL, 0);
 	ID3Tag_Delete(tag);
+	return;
 }
 
 static int mp3_open (const char *path, struct fuse_file_info *fi)
