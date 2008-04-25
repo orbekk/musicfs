@@ -1,5 +1,5 @@
 CFLAGS  = -Wall -std=c99 -D_BSD_SOURCE -I/usr/local/include/ -Iinclude/ \
-	`pkg-config fuse --cflags` 
+	`pkg-config fuse --cflags` -DDEBUGGING
 
 LD_ADD  = -L/usr/local/lib -lid3 \
 	`pkg-config fuse --libs`
