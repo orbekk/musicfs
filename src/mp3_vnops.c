@@ -11,9 +11,11 @@
 
 #include <id3.h>
 
+#include "debug.h"
+
 #define MAXPATHLEN 100000
 
-char *musicpath = "/home/lulf/dev/mp3fs/music";
+char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/mp3fs/music";
 
 typedef void traverse_fn_t(char *, void *);
 
@@ -202,6 +204,20 @@ static struct fuse_operations mp3_ops = {
 	.read		= mp3_read,
 };
 
+static int mp3fs_opt_proc (void *data, const char *arg, int key,
+						   struct fuse_args *outargs)
+{
+	static bool musicpath_set = false;
+
+	if (key == FUSE_OPT_KEY_NONOPT && !musicpath_set) {
+		/* The source directory isn't already set, let's do it */
+		strcpy(musicpath, arg);
+		musicpath_set = true;
+		return (0);
+	}
+	return (1);
+}
+
 int
 mp3_run(int argc, char **argv)
 {
@@ -211,11 +227,16 @@ mp3_run(int argc, char **argv)
 
 	/* Update tables. */
 	if (argc < 2) {
-		fprintf(stderr, "Usage: %s <mountpoint> <musicfolder>\n", argv[0]); 
+		fprintf(stderr, "Usage: %s <musicfolder> <mountpoint>\n", argv[0]); 
 		return (-1);
 	}
+
+	struct fuse_args args = FUSE_ARGS_INIT (argc, argv);
+
+	if (fuse_opt_parse(&args, NULL, NULL, mp3fs_opt_proc) != 0)
+		exit (1);
 		
-/*	musicpath = argv[2];*/
-	
-	return (fuse_main(argc, argv, &mp3_ops, NULL));
+	DEBUG("musicpath: %s\n", musicpath);
+
+	return (fuse_main(args.argc, args.argv, &mp3_ops, NULL));
 }
