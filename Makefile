@@ -1,7 +1,7 @@
 CFLAGS  = -Wall -std=c99 -D_BSD_SOURCE -I/usr/local/include/ -Iinclude/ \
-	`pkg-config fuse --cflags` -DDEBUGGING
+	`pkg-config fuse --cflags` `pkg-config taglib --cflags` -DDEBUGGING
 
-LD_ADD  = -L/usr/local/lib -lid3 \
+LD_ADD  = -L/usr/local/lib -ltag_c \
 	`pkg-config fuse --libs`
 CC = gcc
 

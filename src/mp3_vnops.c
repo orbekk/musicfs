@@ -1,6 +1,7 @@
 /* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
 #define FUSE_USE_VERSION 26
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <err.h>
@@ -9,7 +10,7 @@
 #include <dirent.h>
 #include <fuse.h>
 
-#include <id3.h>
+#include <tag_c.h>
 
 #include "debug.h"
 
@@ -138,12 +139,11 @@ void
 mp3_artist(char *filepath, void *data)
 {
 	struct filler_data *fd;
-	ID3Tag *tag;
-	ID3Frame *artist;
-	ID3Field *field;
 	fuse_fill_dir_t filler;
 	void *buf;
 	char name[MAXPATHLEN];
+	TagLib_File *tagfile;
+	TagLib_Tag  *tag;
 
 	/* Retrieve the filler function and pointers. */
 	fd = (struct filler_data *)data;
@@ -151,18 +151,19 @@ mp3_artist(char *filepath, void *data)
 	buf = fd->buf;
 
 	/* Get the tag. */
-	tag = ID3Tag_New();
-	ID3Tag_Link(tag, filepath);
-	artist = ID3Tag_FindFrameWithID(tag, ID3FID_LEADARTIST);
+	tagfile = taglib_file_new(filepath);
+	tag     = taglib_file_tag(tagfile);
+
+	char *artist = taglib_tag_artist(tag);
 	if (artist == NULL)
 		return;
-	field = ID3Frame_GetField(artist, ID3FN_TEXT);
-	if (field == NULL)
-		return;
-	ID3Field_GetASCII(field, name, ID3Field_Size(field));
-	/* XXX: doesn't show up... why? */
+
+	strcpy(name, artist);
+
 	filler(buf, name, NULL, 0);
-	ID3Tag_Delete(tag);
+
+	taglib_tag_free_strings();
+	taglib_file_free(tagfile);
 	return;
 }
 
@@ -207,12 +208,12 @@ static struct fuse_operations mp3_ops = {
 static int mp3fs_opt_proc (void *data, const char *arg, int key,
 						   struct fuse_args *outargs)
 {
-	static bool musicpath_set = false;
+	static int musicpath_set = 0;
 
 	if (key == FUSE_OPT_KEY_NONOPT && !musicpath_set) {
 		/* The source directory isn't already set, let's do it */
 		strcpy(musicpath, arg);
-		musicpath_set = true;
+		musicpath_set = 1;
 		return (0);
 	}
 	return (1);
