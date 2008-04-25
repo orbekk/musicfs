@@ -3,7 +3,10 @@
 struct ID3Tag;
 
 struct mnode {
-	ID3Tag *cached_tag;
 	char *path;
+	ID3Tag *tag;
+
+	/* Entry in search structure. */
+	LIST_ENTRY(mnode) next;
 };
 #endif

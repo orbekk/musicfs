@@ -13,12 +13,17 @@
 #include <tag_c.h>
 #include <mp3fs.h>
 
+/* Simple list containing our nodes. */
+LIST_HEAD(, mnode) music;
+
+traverse_fn_t mp3_scan;
+
 /*
  * Traverse a hierarchy given a directory path. Perform fileoperations on the
  * files in the directory giving data as arguments, as well as recursing on
  * sub-directories.
  */
-void
+struct musiclist *
 traverse_hierarchy(char *dirpath, traverse_fn_t fileop, void *data)
 {
 	DIR *dirp;
@@ -57,11 +62,37 @@ traverse_hierarchy(char *dirpath, traverse_fn_t fileop, void *data)
 	closedir(dirp);
 }
 
-/* 
- * Retrieve artist name given a file, and put in a buffer with a passed filler
- * function
- */
 void
+mp3_initscan(void)
+{
+	LIST_INIT(&music);
+}
+
+/* Scan the music initially. */
+void
+mp3_scan(char *filepath, void *data)
+{
+	struct mnode *mp_new;
+
+	mp_new = malloc(sizeof(struct mnode));
+	if (mp_new == NULL)
+		err(1, "malloc");
+	mp_new->tag = ID3Tag_New();
+	if (mp_new->tag == NULL)
+		err(1, "ID3Tag_New");
+	mp_new->path = strdup(filepath);
+	if (mp_new->path == NULL)
+		err(1, "strdup");
+	ID3Tag_Link(mp_new->tag, mp_new->path);
+
+	/* Insert node into music list. */
+	LIST_INSERT_HEAD(&music, mp, next);
+}
+
+/* 
+ * Retrieve artist name given a file.
+ */
+struct mnode *
 mp3_artist(char *filepath, void *data)
 {
 	struct filler_data *fd;
@@ -90,6 +121,5 @@ mp3_artist(char *filepath, void *data)
 
 	taglib_tag_free_strings();
 	taglib_file_free(tagfile);
-	return;
 }
 

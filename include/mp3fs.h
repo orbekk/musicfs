@@ -2,6 +2,7 @@
 #define _MP3FS_H_
 struct fuse_args;
 int	mp3_run(int, char **);
+void	mp3_initscan(void);
 
 
 /*
@@ -16,4 +17,5 @@ typedef void traverse_fn_t(char *, void *);
 void traverse_hierarchy(char *, traverse_fn_t, void *);
 
 traverse_fn_t mp3_artist;
+traverse_fn_t mp3_scan;
 #endif
