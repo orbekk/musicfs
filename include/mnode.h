@@ -1,11 +1,10 @@
 #ifndef _MP3NODE_H_
 #define _MP3NODE_H_
-struct ID3Tag;
+struct TagLib_File;
 
 struct mnode {
 	char *path;
-	ID3Tag *tag;
-
+	TagLib_File *tag;
 	/* Entry in search structure. */
 	LIST_ENTRY(mnode) next;
 };
