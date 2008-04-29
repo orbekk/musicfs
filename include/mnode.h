@@ -1,5 +1,6 @@
 #ifndef _MP3NODE_H_
 #define _MP3NODE_H_
+#include <queue.h>
 struct TagLib_File;
 
 struct mnode {

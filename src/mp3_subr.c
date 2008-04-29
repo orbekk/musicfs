@@ -3,19 +3,20 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 #include <err.h>
 
 #include <sys/types.h>
+#include <sys/param.h>
 #include <dirent.h>
 #include <fuse.h>
-#include <sys/param.h>
 
 #include <tag_c.h>
 #include <mp3fs.h>
+#include <mnode.h>
+#include <queue.h>
+#include <debug.h>
 
-/* Local prototypes. */
-static int runfilter(struct collection *, struct collection *, struct mnode *,
-    filter_fn_t);
 
 struct queryvector {
 	char *artist;
@@ -23,18 +24,19 @@ struct queryvector {
 	char *genre;
 };
 
-
+/* Local prototypes. */
+static int isduplicate(struct collection *, struct queryvector *);
 static void free_query_vector(struct queryvector *);
 static void fill_query_vector(struct queryvector *, struct mnode *);
 static int query_matches(struct queryvector *, struct queryvector *);
 /* Simple list containing our nodes. */
-struct collection collection;
+struct collection allmusic;
 
 void
 mp3_initscan(char *musicpath)
 {
-	LIST_INIT(&collection.head);
-	traverse_hierarchy(musicpath, mp3_scan, &collection);
+	LIST_INIT(&allmusic.head);
+	traverse_hierarchy(musicpath, mp3_scan, &allmusic);
 }
 
 /*
@@ -87,20 +89,60 @@ mp3_scan(char *filepath, struct collection *coll)
 	mp_new = malloc(sizeof(struct mnode));
 	if (mp_new == NULL)
 		err(1, "malloc");
-	mp_new->tag     = taglib_file_tag(filepath);
+	mp_new->tag = taglib_file_new(filepath);
 	mp_new->path = strdup(filepath);
 	if (mp_new->path == NULL)
 		err(1, "strdup");
 
 	/* Insert node into music list. */
 	LIST_INSERT_HEAD(&coll->head, mp_new, coll_next);
+
+#ifdef DEBUGGING
+	LIST_FOREACH(mp_new, &coll->head, coll_next) {
+		DEBUG("Loaded '%s' into database\n", mp_new->path);
+	}
+
+#endif
 }
 
-/* XXX: The query system must meet the following requirements:
- * 1. Possible to do selections based on fields.
- * 2. Possible to do selections based on data of a field (for instance, give the
- * list of songs by an artist).
+/*
+ * Given a selection, fetch out the wanted tag and use filler.
  */
+void
+mp3_filter(struct collection *selection, int filter, struct filler_data *fd)
+{
+	TagLib_Tag *tag;
+	struct mnode *mp;
+	char *field, *tmp;
+
+	fd->filler(fd->buf, "LOL", NULL, 0);
+	LIST_FOREACH(mp, &selection->head, sel_next) {
+		tag = taglib_file_tag(mp->tag);
+		switch (filter) {
+			case FILTER_ARTIST:
+			field = taglib_tag_artist(tag);
+			break;
+			case FILTER_GENRE:
+			field = taglib_tag_genre(tag);
+			break;
+			case FILTER_TITLE:
+			field = taglib_tag_title(tag);
+			break;
+			default:
+				err(1, "invalid filter given");
+			break;
+		}
+		if (field == NULL)
+			continue;
+		/* XXX: check if we need to free this or not. */
+		tmp = strdup(field);
+		if (tmp == NULL)
+			err(1, "not enough memory in filter");
+		fd->filler(fd->buf, tmp, NULL, 0);
+		taglib_tag_free_strings();
+	}
+}
+
 /*
  * Perform a query selecting artists given a filter.
  */
@@ -109,7 +151,7 @@ mp3_select(char *artist, char *title, char *genre)
 {
 	struct mnode *mp;
 	struct collection *selection;
-	struct queryvectore qv, qv2;
+	struct queryvector qv, qv2;
 
 	qv.artist = artist;
 	qv.title = title;
@@ -122,7 +164,7 @@ mp3_select(char *artist, char *title, char *genre)
 
 	LIST_INIT(&selection->head);
 	/* Filter our collection. */
-	LIST_FOREACH(mp, &collection.head, coll_next) {
+	LIST_FOREACH(mp, &allmusic.head, coll_next) {
 		/* First make sure it matches our criteria. */
 		fill_query_vector(&qv2, mp);
 		if (query_matches(&qv2, &qv) && !isduplicate(selection, &qv2))
@@ -136,7 +178,7 @@ mp3_select(char *artist, char *title, char *genre)
  * Filter out unique fields.
  */
 static int
-isduplicate(struct selection *selection, struct queryvector *qv)
+isduplicate(struct collection *selection, struct queryvector *qv)
 {
 	struct mnode *mp2;
 	struct queryvector qv_entry;

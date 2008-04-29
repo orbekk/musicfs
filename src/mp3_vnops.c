@@ -41,6 +41,7 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
 	struct filler_data fd;
+	struct collection *selection;
 
 	filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
@@ -58,9 +59,13 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 * 2. Find the mp3s that matches the tags given from the path.
 	 * 3. Return the list of those mp3s.
 	 */
+	filler(buf, "LOllll", NULL, 0);
 	if (!strcmp(path, "/Artists")) {
 		/* List artists. */
-		traverse_hierarchy(musicpath, mp3_artist, &fd);
+		/* XXX: need to free selection structure!. */
+		selection = mp3_select(NULL, NULL, NULL);
+		mp3_filter(selection, FILTER_ARTIST, &fd);
+		free(selection);
 		return (0);
 	}
 	return (-ENOENT);
@@ -144,6 +149,7 @@ mp3_run(int argc, char **argv)
 		exit (1);
 		
 	DEBUG("musicpath: %s\n", musicpath);
+	mp3_initscan(musicpath);
 
 	return (fuse_main(args.argc, args.argv, &mp3_ops, NULL));
 }
