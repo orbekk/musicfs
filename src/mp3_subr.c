@@ -16,6 +16,7 @@
 #include <mnode.h>
 #include <queue.h>
 #include <debug.h>
+#include <log.h>
 
 
 struct queryvector {
@@ -25,10 +26,10 @@ struct queryvector {
 };
 
 /* Local prototypes. */
-static int isduplicate(struct collection *, struct queryvector *);
+static int isduplicate(struct collection *, struct queryvector *, int);
 static void free_query_vector(struct queryvector *);
 static void fill_query_vector(struct queryvector *, struct mnode *);
-static int query_matches(struct queryvector *, struct queryvector *);
+static int query_matches(struct queryvector *, struct queryvector *, int);
 /* Simple list containing our nodes. */
 struct collection allmusic;
 
@@ -113,10 +114,10 @@ mp3_filter(struct collection *selection, int filter, struct filler_data *fd)
 {
 	TagLib_Tag *tag;
 	struct mnode *mp;
-	char *field, *tmp;
+	char *field, name[MAXPATHLEN];
 
-	fd->filler(fd->buf, "LOL", NULL, 0);
 	LIST_FOREACH(mp, &selection->head, sel_next) {
+	
 		tag = taglib_file_tag(mp->tag);
 		switch (filter) {
 			case FILTER_ARTIST:
@@ -132,14 +133,11 @@ mp3_filter(struct collection *selection, int filter, struct filler_data *fd)
 				err(1, "invalid filter given");
 			break;
 		}
-		if (field == NULL)
+		if (field == NULL || !strcmp(field, ""))
 			continue;
 		/* XXX: check if we need to free this or not. */
-		tmp = strdup(field);
-		if (tmp == NULL)
-			err(1, "not enough memory in filter");
-		fd->filler(fd->buf, tmp, NULL, 0);
-		taglib_tag_free_strings();
+		strlcpy(name, field, sizeof(name));
+		fd->filler(fd->buf, name, NULL, 0);
 	}
 }
 
@@ -147,15 +145,18 @@ mp3_filter(struct collection *selection, int filter, struct filler_data *fd)
  * Perform a query selecting artists given a filter.
  */
 struct collection *
-mp3_select(char *artist, char *title, char *genre)
+mp3_select(int flags, char *artist, char *title, char *genre)
 {
 	struct mnode *mp;
 	struct collection *selection;
 	struct queryvector qv, qv2;
 
-	qv.artist = artist;
-	qv.title = title;
-	qv.genre = genre;
+	if (flags & SELECT_ARTIST)
+		qv.artist = artist;
+	if (flags & SELECT_TITLE)
+		qv.title = title;
+	if (flags & SELECT_GENRE)
+		qv.genre = genre;
 
 	/* Initialize selection structure. */
 	selection = malloc(sizeof(struct collection));
@@ -164,13 +165,16 @@ mp3_select(char *artist, char *title, char *genre)
 
 	LIST_INIT(&selection->head);
 	/* Filter our collection. */
+
 	LIST_FOREACH(mp, &allmusic.head, coll_next) {
 		/* First make sure it matches our criteria. */
 		fill_query_vector(&qv2, mp);
-		if (query_matches(&qv2, &qv) && !isduplicate(selection, &qv2))
+		if (query_matches(&qv2, &qv, flags) && !isduplicate(selection,
+		    &qv2, flags))
 			LIST_INSERT_HEAD(&selection->head, mp, sel_next);
 		free_query_vector(&qv2);
 	}
+
 	return (selection);
 }
 
@@ -178,7 +182,7 @@ mp3_select(char *artist, char *title, char *genre)
  * Filter out unique fields.
  */
 static int
-isduplicate(struct collection *selection, struct queryvector *qv)
+isduplicate(struct collection *selection, struct queryvector *qv, int flags)
 {
 	struct mnode *mp2;
 	struct queryvector qv_entry;
@@ -186,7 +190,7 @@ isduplicate(struct collection *selection, struct queryvector *qv)
 	LIST_FOREACH(mp2, &selection->head, sel_next) {
 		/* Compare to determine if it's a duplicate. */
 		fill_query_vector(&qv_entry, mp2);
-		if (query_matches(&qv_entry, qv)) {
+		if (query_matches(&qv_entry, qv, flags)) {
 			free_query_vector(&qv_entry);
 			return (1);
 		}
@@ -223,19 +227,19 @@ free_query_vector(struct queryvector *qv)
 
 /* Determine if two query vectors matches. */
 static int
-query_matches(struct queryvector *qv1, struct queryvector *qv2)
+query_matches(struct queryvector *qv1, struct queryvector *qv2, int flags)
 {
 
 	/* Check if it matches the different fields. */
-	if (qv1->artist != NULL && qv2->artist != NULL) {
+	if ((flags & SELECT_ARTIST) && qv1->artist != NULL && qv2->artist != NULL) {
 		if (strcmp(qv1->artist, qv2->artist))
 			return (0);
 	} 
-	if (qv1->title != NULL && qv2->title != NULL) {
+	if ((flags & SELECT_TITLE) && qv1->title != NULL && qv2->title != NULL) {
 		if (strcmp(qv1->title, qv2->title))
 			return (0);
 	}
-	if (qv1->genre != NULL && qv2->genre != NULL) {
+	if ((flags & SELECT_GENRE) && qv1->genre != NULL && qv2->genre != NULL) {
 		if (strcmp(qv1->genre, qv2->genre))
 			return (0);
 	}

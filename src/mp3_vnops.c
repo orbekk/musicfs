@@ -13,10 +13,11 @@
 
 #include <tag_c.h>
 #include <mp3fs.h>
-
 #include <debug.h>
+#include <log.h>
 
 char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/mp3fs/music";
+char *logpath = "/home/lulf/dev/mp3fs/mp3fs.log";
 
 static int mp3_getattr (const char *path, struct stat *stbuf)
 {
@@ -59,11 +60,14 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 * 2. Find the mp3s that matches the tags given from the path.
 	 * 3. Return the list of those mp3s.
 	 */
-	filler(buf, "LOllll", NULL, 0);
 	if (!strcmp(path, "/Artists")) {
 		/* List artists. */
+
 		/* XXX: need to free selection structure!. */
-		selection = mp3_select(NULL, NULL, NULL);
+		selection = mp3_select(SELECT_ARTIST, NULL, NULL, NULL);
+		/* Could we save a loop iteration here? Doesn' really matter
+		 * since it has much lower complexity than mp3_select.
+		 */
 		mp3_filter(selection, FILTER_ARTIST, &fd);
 		free(selection);
 		return (0);
@@ -133,6 +137,7 @@ static int mp3fs_opt_proc (void *data, const char *arg, int key,
 int
 mp3_run(int argc, char **argv)
 {
+	int ret;
 	/*
 	 * XXX: Build index of mp3's.
 	 */
@@ -149,7 +154,10 @@ mp3_run(int argc, char **argv)
 		exit (1);
 		
 	DEBUG("musicpath: %s\n", musicpath);
+	log_open(logpath);
 	mp3_initscan(musicpath);
 
-	return (fuse_main(args.argc, args.argv, &mp3_ops, NULL));
+	ret = fuse_main(args.argc, args.argv, &mp3_ops, NULL);
+	log_close();
+	return (ret);
 }

@@ -24,8 +24,24 @@ traverse_fn_t mp3_scan;
 
 /*
  * Functions performing queries on the collection.
+ * Usage:
+ * To list all artists:
+ 	mp3_select(SELECT_ARTIST, NULL, NULL, NULL);
+ * To list one artist "Haddaway":
+ 	mp3_select(SELECT_ARTIST, "Haddaway", NULL, NULL);
+ * To list unique artists in genre "Rock"
+ 	mp3_select(SELECT_ARTIST | SELECT_GENRE, NULL, NULL, "Rock");
+
+ * So, one can say that the first parameter specifies which fields should be
+ * taken into account when comparing for duplicates, and the field parameters
+ * determines if * there are some fields of that paramters which it must match.
+
+ * I hope to improve this soon.
  */
-struct collection *mp3_select(char *, char *, char *);
+#define SELECT_ARTIST 0x1
+#define SELECT_TITLE 0x2
+#define SELECT_GENRE 0x4
+struct collection *mp3_select(int, char *, char *, char *);
 
 /*
  * Use a selection to input a certain tag field into a filler.
