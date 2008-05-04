@@ -14,7 +14,6 @@
 #include <tag_c.h>
 #include <mp3fs.h>
 #include <debug.h>
-#include <log.h>
 
 char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/mp3fs/music";
 char *logpath = "/home/lulf/dev/mp3fs/mp3fs.log";
@@ -154,10 +153,8 @@ mp3_run(int argc, char **argv)
 		exit (1);
 		
 	DEBUG("musicpath: %s\n", musicpath);
-	log_open(logpath);
 	mp3_initscan(musicpath);
 
 	ret = fuse_main(args.argc, args.argv, &mp3_ops, NULL);
-	log_close();
 	return (ret);
 }

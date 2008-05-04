@@ -16,8 +16,6 @@
 #include <mnode.h>
 #include <queue.h>
 #include <debug.h>
-#include <log.h>
-
 
 struct queryvector {
 	char *artist;
@@ -136,7 +134,7 @@ mp3_filter(struct collection *selection, int filter, struct filler_data *fd)
 		if (field == NULL || !strcmp(field, ""))
 			continue;
 		/* XXX: check if we need to free this or not. */
-		strlcpy(name, field, sizeof(name));
+		strncpy(name, field, sizeof(name));
 		fd->filler(fd->buf, name, NULL, 0);
 	}
 }
