@@ -26,13 +26,13 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 		stbuf->st_nlink = 2;
 		return 0;
 	}
-	if (strcmp (path, "/Artists") == 0) {
+	if (strcmp(path, "/Artists") == 0 ||
+	    strcmp(path, "/Genres") == 0) {
 		stbuf->st_mode	= S_IFDIR | 0444;
 		stbuf->st_nlink = 1;
 		stbuf->st_size	= 12;
 		return 0;
 	}
-
 	return -ENOENT;
 }
 
@@ -58,20 +58,14 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 * 2. Find the mp3s that matches the tags given from the path.
 	 * 3. Return the list of those mp3s.
 	 */
-	DEBUG("Going to run query\n");
-	if (!strcmp(path, "/Artists")) {
+	if (strcmp(path, "/Artists") == 0) {
 		mp3_list("SELECT name FROM artist", 0, &fd);
-		/* List artists. */
+		return (0);
+	} else if (strcmp(path, "/Genres") == 0) {
+		mp3_list("SELECT name FROM genre", 0, &fd);
 		return (0);
 	}
 	return (-ENOENT);
-}
-
-
-void
-call_lol(char *path)
-{
-	printf("Path %s\n", path);
 }
 
 static int mp3_open (const char *path, struct fuse_file_info *fi)
