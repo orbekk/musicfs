@@ -41,7 +41,6 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
 	struct filler_data fd;
-	struct collection *selection;
 
 	filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
@@ -61,14 +60,7 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 */
 	if (!strcmp(path, "/Artists")) {
 		/* List artists. */
-
 		/* XXX: need to free selection structure!. */
-		selection = mp3_select(SELECT_ARTIST, NULL, NULL, NULL);
-		/* Could we save a loop iteration here? Doesn' really matter
-		 * since it has much lower complexity than mp3_select.
-		 */
-		mp3_filter(selection, FILTER_ARTIST, &fd);
-		free(selection);
 		return (0);
 	}
 	return (-ENOENT);
@@ -155,6 +147,7 @@ mp3_run(int argc, char **argv)
 	DEBUG("musicpath: %s\n", musicpath);
 	mp3_initscan(musicpath);
 
-	ret = fuse_main(args.argc, args.argv, &mp3_ops, NULL);
+	ret = 0;
+//	ret = fuse_main(args.argc, args.argv, &mp3_ops, NULL);
 	return (ret);
 }

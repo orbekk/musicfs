@@ -13,29 +13,26 @@
 
 #include <tag_c.h>
 #include <mp3fs.h>
-#include <mnode.h>
-#include <queue.h>
+#include <sqlite3.h>
 #include <debug.h>
 
-struct queryvector {
-	char *artist;
-	char *title;
-	char *genre;
-};
+sqlite3 *handle;
 
-/* Local prototypes. */
-static int isduplicate(struct collection *, struct queryvector *, int);
-static void free_query_vector(struct queryvector *);
-static void fill_query_vector(struct queryvector *, struct mnode *);
-static int query_matches(struct queryvector *, struct queryvector *, int);
-/* Simple list containing our nodes. */
-struct collection allmusic;
-
-void
+int
 mp3_initscan(char *musicpath)
 {
-	LIST_INIT(&allmusic.head);
-	traverse_hierarchy(musicpath, mp3_scan, &allmusic);
+	int error;
+
+	/* Open database. */
+	error = sqlite3_open(DBNAME, &handle);
+	if (error) {
+		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
+		sqlite3_close(handle);
+		return (-1);
+	}
+	traverse_hierarchy(musicpath, mp3_scan);
+	sqlite3_close(handle);
+	return (0);
 }
 
 /*
@@ -44,7 +41,7 @@ mp3_initscan(char *musicpath)
  * sub-directories.
  */
 void
-traverse_hierarchy(char *dirpath, traverse_fn_t fileop, struct collection *coll)
+traverse_hierarchy(char *dirpath, traverse_fn_t fileop)
 {
 	DIR *dirp;
 	struct dirent *dp;
@@ -67,180 +64,162 @@ traverse_hierarchy(char *dirpath, traverse_fn_t fileop, struct collection *coll)
 			err(1, "error doing stat on %s", filepath);
 		/* Recurse if it's a directory. */
 		if (st.st_mode & S_IFDIR)  {
-			traverse_hierarchy(filepath, fileop, coll);
+			traverse_hierarchy(filepath, fileop);
 			continue;
 		}
 		/* If it's a regular file, perform the operation. */
 		if (st.st_mode & S_IFREG) {
-			fileop(filepath, coll);
+			fileop(filepath);
 		}
 	}
 	closedir(dirp);
 }
 
+static int
+mp3_scan_callback(void *ignore, int argc, char **argv, char **colname)
+{
+	return 0;
+}
 
 /* Scan the music initially. */
 void
-mp3_scan(char *filepath, struct collection *coll)
+mp3_scan(char *filepath)
 {
-	struct mnode *mp_new;
+	TagLib_File *file;
+	TagLib_Tag *tag;
+	char *artist, *album, *genre, *title;
+	char *query, *errmsg;
+	int ret;
+	unsigned int year;
+	sqlite3_stmt *st;
 
-	mp_new = malloc(sizeof(struct mnode));
-	if (mp_new == NULL)
-		err(1, "malloc");
-	mp_new->tag = taglib_file_new(filepath);
-	mp_new->path = strdup(filepath);
-	if (mp_new->path == NULL)
-		err(1, "strdup");
-
-	/* Insert node into music list. */
-	LIST_INSERT_HEAD(&coll->head, mp_new, coll_next);
-
-#ifdef DEBUGGING
-	LIST_FOREACH(mp_new, &coll->head, coll_next) {
-		DEBUG("Loaded '%s' into database\n", mp_new->path);
+	file = taglib_file_new(filepath);
+	/* XXX: errmsg. */
+	if (file == NULL)
+		return;
+	tag = taglib_file_tag(file);
+	if (tag == NULL) {
+		printf("error!\n");
+		return;
 	}
 
-#endif
-}
+	/* XXX: The main query code should perhaps be a bit generalized. */
 
-/*
- * Given a selection, fetch out the wanted tag and use filler.
- */
-void
-mp3_filter(struct collection *selection, int filter, struct filler_data *fd)
-{
-	TagLib_Tag *tag;
-	struct mnode *mp;
-	char *field, name[MAXPATHLEN];
-
-	LIST_FOREACH(mp, &selection->head, sel_next) {
-	
-		tag = taglib_file_tag(mp->tag);
-		switch (filter) {
-			case FILTER_ARTIST:
-			field = taglib_tag_artist(tag);
+	/* First insert artist if we have it. */
+	do {
+		artist = taglib_tag_artist(tag);
+		if (artist == NULL)
 			break;
-			case FILTER_GENRE:
-			field = taglib_tag_genre(tag);
+		/* First find out if it exists. */
+		asprintf(&query, "SELECT * FROM artist WHERE name='%s'",
+		    artist);
+		if (query == NULL)
 			break;
-			case FILTER_TITLE:
-			field = taglib_tag_title(tag);
-			break;
-			default:
-				err(1, "invalid filter given");
+		ret = sqlite3_prepare(handle, query, -1, &st, NULL);
+		if (ret != SQLITE_OK) {
+			warnx("Error preparing statement\n");
+			free(query);
 			break;
 		}
-		if (field == NULL || !strcmp(field, ""))
-			continue;
-		/* XXX: check if we need to free this or not. */
-		strncpy(name, field, sizeof(name));
-		fd->filler(fd->buf, name, NULL, 0);
-	}
-}
-
-/*
- * Perform a query selecting artists given a filter.
- */
-struct collection *
-mp3_select(int flags, char *artist, char *title, char *genre)
-{
-	struct mnode *mp;
-	struct collection *selection;
-	struct queryvector qv, qv2;
-
-	if (flags & SELECT_ARTIST)
-		qv.artist = artist;
-	if (flags & SELECT_TITLE)
-		qv.title = title;
-	if (flags & SELECT_GENRE)
-		qv.genre = genre;
-
-	/* Initialize selection structure. */
-	selection = malloc(sizeof(struct collection));
-	if (selection == NULL)
-		return (NULL);
-
-	LIST_INIT(&selection->head);
-	/* Filter our collection. */
-
-	LIST_FOREACH(mp, &allmusic.head, coll_next) {
-		/* First make sure it matches our criteria. */
-		fill_query_vector(&qv2, mp);
-		if (query_matches(&qv2, &qv, flags) && !isduplicate(selection,
-		    &qv2, flags))
-			LIST_INSERT_HEAD(&selection->head, mp, sel_next);
-		free_query_vector(&qv2);
-	}
-
-	return (selection);
-}
-
-/*
- * Filter out unique fields.
- */
-static int
-isduplicate(struct collection *selection, struct queryvector *qv, int flags)
-{
-	struct mnode *mp2;
-	struct queryvector qv_entry;
-
-	LIST_FOREACH(mp2, &selection->head, sel_next) {
-		/* Compare to determine if it's a duplicate. */
-		fill_query_vector(&qv_entry, mp2);
-		if (query_matches(&qv_entry, qv, flags)) {
-			free_query_vector(&qv_entry);
-			return (1);
+		ret = sqlite3_step(st);
+		sqlite3_finalize(st);
+		/* Already exists or generic error. */
+		if (ret != SQLITE_DONE)
+			break;
+		/* Doesn't exist, so we can insert it. */
+		free(query);
+		asprintf(&query, "INSERT INTO artist(name) VALUES('%s')",
+		    artist);
+		if (query == NULL)
+			break;
+		ret = sqlite3_exec(handle, query, mp3_scan_callback, 0,
+		    &errmsg);
+		free(query);
+		if (ret != SQLITE_OK) {
+			warnx("Error inserting into database: %s\n", errmsg);
+			sqlite3_free(errmsg);
+			break;
 		}
-		free_query_vector(&qv_entry);
-	}
-	return (0);
-}
+	} while (0);
 
-/* Fill in a query vector given a node with tags. */
-static void
-fill_query_vector(struct queryvector *qv, struct mnode *mp)
-{
-	TagLib_Tag *tag;
+	/* Insert genre if it doesn't exist. */
+	do {
+		genre = taglib_tag_genre(tag);
+		if (genre == NULL)
+			break;
+		/* First find out if it exists. */
+		asprintf(&query, "SELECT * FROM genre WHERE name='%s'", genre);
+		if (query == NULL)
+			break;
+		ret = sqlite3_prepare(handle, query, -1, &st, NULL);
+		if (ret != SQLITE_OK) {
+			warnx("Error preparing statement\n");
+			free(query);
+			break;
+		}
+		ret = sqlite3_step(st);
+		sqlite3_finalize(st);
+		/* Already exists or generic error. */
+		if (ret != SQLITE_DONE)
+			break;
+		free(query);
+		asprintf(&query, "INSERT INTO genre(name) VALUES('%s')", genre);
+		if (query == NULL)
+			break;
+		ret = sqlite3_exec(handle, query, mp3_scan_callback, 0,
+		    &errmsg);
+		free(query);
+		if (ret != SQLITE_OK) {
+			warnx("Error inserting into database: %s\n", errmsg);
+			sqlite3_free(errmsg);
+			break;
+		}
+	} while (0);
 
-	tag = taglib_file_tag(mp->tag);
-	qv->artist = strdup(taglib_tag_artist(tag));
-	qv->title = strdup(taglib_tag_title(tag));
-	qv->genre = strdup(taglib_tag_genre(tag));
+	/* Finally, insert song. */
+	do {
+		title = taglib_tag_title(tag);
+		album = taglib_tag_album(tag);
+		year = taglib_tag_year(tag);
+		if (title == NULL || genre == NULL || artist == NULL ||
+		    album == NULL)
+			break;
+
+		/* First find out if it exists. */
+		asprintf(&query, "SELECT * FROM song, artist WHERE "
+		    "artist.name=song.artistname AND title='%s' AND year=%u",
+		    title, year);
+		if (query == NULL)
+			break;
+		ret = sqlite3_prepare(handle, query, -1, &st, NULL);
+		if (ret != SQLITE_OK) {
+			warnx("Error preparing statement\n");
+			free(query);
+			break;
+		}
+		ret = sqlite3_step(st);
+		sqlite3_finalize(st);
+		free(query);
+		/* Already exists or generic error. */
+		if (ret != SQLITE_DONE) {
+			printf("Duplicate song!\n");
+			break;
+		}
+		/* Now, finally insert it. */
+		asprintf(&query, "INSERT INTO song(title, artistname, album, "
+		    "genrename, year) VALUES('%s', '%s', '%s', '%s', %u)",
+		    title, artist, album, genre, year);
+		if (query == NULL)
+			break;
+		ret = sqlite3_exec(handle, query, mp3_scan_callback, 0,
+		    &errmsg);
+		free(query);
+		if (ret != SQLITE_OK) {
+			warnx("Error inserting into database: %s\n", errmsg);
+			sqlite3_free(errmsg);
+			break;
+		}	
+		
+	} while (0);
 	taglib_tag_free_strings();
 }
-
-/* Free a query vector. */
-static void
-free_query_vector(struct queryvector *qv)
-{
-
-	if (qv->artist != NULL)
-		free(qv->artist);
-	if (qv->title != NULL)
-		free(qv->title);
-	if (qv->genre != NULL)
-		free(qv->genre);
-}
-
-/* Determine if two query vectors matches. */
-static int
-query_matches(struct queryvector *qv1, struct queryvector *qv2, int flags)
-{
-
-	/* Check if it matches the different fields. */
-	if ((flags & SELECT_ARTIST) && qv1->artist != NULL && qv2->artist != NULL) {
-		if (strcmp(qv1->artist, qv2->artist))
-			return (0);
-	} 
-	if ((flags & SELECT_TITLE) && qv1->title != NULL && qv2->title != NULL) {
-		if (strcmp(qv1->title, qv2->title))
-			return (0);
-	}
-	if ((flags & SELECT_GENRE) && qv1->genre != NULL && qv2->genre != NULL) {
-		if (strcmp(qv1->genre, qv2->genre))
-			return (0);
-	}
-	return (1);
-}
-
