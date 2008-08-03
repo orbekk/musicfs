@@ -58,9 +58,10 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 * 2. Find the mp3s that matches the tags given from the path.
 	 * 3. Return the list of those mp3s.
 	 */
+	DEBUG("Going to run query\n");
 	if (!strcmp(path, "/Artists")) {
+		mp3_list("SELECT name FROM artist", 0, &fd);
 		/* List artists. */
-		/* XXX: need to free selection structure!. */
 		return (0);
 	}
 	return (-ENOENT);
@@ -148,6 +149,6 @@ mp3_run(int argc, char **argv)
 	mp3_initscan(musicpath);
 
 	ret = 0;
-//	ret = fuse_main(args.argc, args.argv, &mp3_ops, NULL);
+	ret = fuse_main(args.argc, args.argv, &mp3_ops, NULL);
 	return (ret);
 }

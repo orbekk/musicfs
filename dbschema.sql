@@ -18,4 +18,4 @@ CREATE TABLE song (
 CREATE TABLE genre (
 	name varchar(200) NOT NULL,
 	PRIMARY KEY(name)
-)
+);
