@@ -104,7 +104,7 @@ mp3_scan(char *filepath)
 		if (artist == NULL)
 			break;
 		/* First find out if it exists. */
-		ret = sqlite3_prepare(handle, "SELECT * FROM artist WHERE "
+		ret = sqlite3_prepare_v2(handle, "SELECT * FROM artist WHERE "
 		    "name=?", -1, &st, NULL);
 		if (ret != SQLITE_OK) {
 			warnx("Error preparing statement: %s\n",
@@ -118,7 +118,7 @@ mp3_scan(char *filepath)
 		if (ret != SQLITE_DONE)
 			break;
 		/* Doesn't exist, so we can insert it. */
-		ret = sqlite3_prepare(handle, "INSERT INTO artist(name) "
+		ret = sqlite3_prepare_v2(handle, "INSERT INTO artist(name) "
 		    "VALUES(?)", -1, &st, NULL);
 		if (ret != SQLITE_OK) {
 			warnx("Error preparing statement: %s\n",
@@ -141,7 +141,7 @@ mp3_scan(char *filepath)
 		if (genre == NULL)
 			break;
 		/* First find out if it exists. */
-		ret = sqlite3_prepare(handle, "SELECT * FROM genre WHERE "
+		ret = sqlite3_prepare_v2(handle, "SELECT * FROM genre WHERE "
 		    "name=?", -1, &st, NULL);
 		if (ret != SQLITE_OK) {
 			warnx("Error preparing statement: %s\n",
@@ -155,7 +155,7 @@ mp3_scan(char *filepath)
 		if (ret != SQLITE_DONE)
 			break;
 		/* Doesn't exist, so we can insert it. */
-		ret = sqlite3_prepare(handle, "INSERT INTO genre(name) "
+		ret = sqlite3_prepare_v2(handle, "INSERT INTO genre(name) "
 		    "VALUES(?)", -1, &st, NULL);
 		if (ret != SQLITE_OK) {
 			warnx("Error preparing statement: %s\n",
@@ -182,7 +182,7 @@ mp3_scan(char *filepath)
 			break;
 
 		/* First find out if it exists. */
-		ret = sqlite3_prepare(handle, "SELECT * FROM song, artist "
+		ret = sqlite3_prepare_v2(handle, "SELECT * FROM song, artist "
 		    " WHERE artist.name=song.artistname AND title=? AND year=?",
 		    -1, &st, NULL);
 		if (ret != SQLITE_OK) {
@@ -198,7 +198,7 @@ mp3_scan(char *filepath)
 		if (ret != SQLITE_DONE)
 			break;
 		/* Now, finally insert it. */
-		ret = sqlite3_prepare(handle, "INSERT INTO song(title, "
+		ret = sqlite3_prepare_v2(handle, "INSERT INTO song(title, "
 		    "artistname, album, genrename, year) VALUES(?, ?, ?, ?, ?)",
 		    -1, &st, NULL);
 		if (ret != SQLITE_OK) {
@@ -220,13 +220,14 @@ mp3_scan(char *filepath)
 		}
 	} while (0);
 	taglib_tag_free_strings();
+	taglib_file_free(file);
 }
 
 /*
  * Perform query and list the result from field.
  */
 void
-mp3_list(char *query, int field, struct filler_data *fd)
+mp3_list(int field, struct filler_data *fd, char *query)
 {
 	sqlite3_stmt *st;
 	fuse_fill_dir_t filler;
@@ -256,4 +257,75 @@ mp3_list(char *query, int field, struct filler_data *fd)
 	}
 	// XXX: Check for errors too.
 	sqlite3_close(handle);
+}
+
+/*
+ * Count number of tokens in pathname.
+ * XXX: should we strip the first and last?
+ */
+int
+mp3_numtoken(const char *str)
+{
+	const char *ptr;
+	int num;
+
+	num = 0;
+	ptr = str;
+	if (*ptr == '/')
+		ptr++;
+	while ((*ptr != '\0')) {
+		if (*ptr++ == '/')
+			num++;
+	}
+	if (*(ptr - 1) == '/')
+		num--;
+	return (num + 1);
+}
+
+/*
+ * Extract token number toknum and return it in escaped form.
+ */
+char *
+mp3_gettoken(const char *str, int toknum)
+{
+	const char *ptr, *start, *end;
+	char *ret, *dest;
+	int numescape;
+	int i;
+	size_t size;
+
+	start = str;
+	/* Find the token start. */
+	for (i = 0; i < toknum; i++) {
+		start = strchr(start, '/');
+		if (start == NULL)
+			return (NULL);
+		start++;
+	}
+	/* Find the end pointer. */
+	end = strchr(start, '/');
+	if (end == NULL)
+		end = strchr(start, '\0');
+	/* 
+	 * Count how many bytes extra to take into account because of escaping.
+	 */
+	numescape = 0;
+	ptr = start;
+	while ((ptr = strchr(ptr, '\'')) != NULL && ptr < end) {
+		ptr++;
+		numescape++;
+	}
+	size = (end - start) + numescape;
+	ret = malloc(size + 1);
+	if (ret == NULL)
+		return (ret);
+	ptr = start;
+	dest = ret;
+	while (ptr < end) {
+		if (*ptr == '\'')
+			*dest++ = '\\';
+		*dest++ = *ptr++;
+	}
+	ret[size] = '\0';
+	return (ret);
 }

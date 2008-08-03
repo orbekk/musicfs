@@ -1,0 +1,11 @@
+TODO for the nearest future:
+- Add abstractions for checks that might be done several times, such as pathname
+  checks and try make it more generic than the current state.
+- Add abstractions for executing queries or listing albums and tracks.
+- Support other types than strings.
+- Simplify scanning a bit a lot of code used multiple times.
+- We should add filename path to database schema in case we want to touch the
+  data :)
+- Check for errors in mp3_list.
+- Add proper debugging facilities.
+- Support looking up a file and reading from it.

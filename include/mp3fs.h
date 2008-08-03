@@ -24,5 +24,7 @@ struct filler_data {
 	fuse_fill_dir_t filler;
 };
 
-void	mp3_list(char *, int, struct filler_data *);
+void	 mp3_list(int, struct filler_data *, char *);
+char	*mp3_gettoken(const char *, int);
+int	 mp3_numtoken(const char *);
 #endif
