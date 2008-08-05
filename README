@@ -3,5 +3,5 @@ mp3fs is to provide filesystem hierarchy based on id3 tags of mp3-files.
 
 Dependencies
 ~~~~~~~~~~~~
-- libid3 v.?
+- taglib 1.5
 - FUSE   v.2.6?
