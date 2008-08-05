@@ -225,15 +225,19 @@ mp3_scan(char *filepath)
 
 /*
  * Perform query and list the result from field.
+ * XXX: The varargs stuff got a bit uglier than I anticipated. I think i'd like
+ * to remove it perhaps...
  */
 void
-mp3_list(int field, struct filler_data *fd, char *query)
+mp3_list(int field, struct filler_data *fd, const char *query, const char *fmt, ...)
 {
 	sqlite3_stmt *st;
 	fuse_fill_dir_t filler;
 	void *buf;
 	const unsigned char *value;
-	int error, ret;
+	char *s;
+	va_list ap;
+	int d, error, ret;
 
 	filler = fd->filler;
 	buf = fd->buf;
@@ -249,6 +253,21 @@ mp3_list(int field, struct filler_data *fd, char *query)
 	//	warnx("Error preparing statement\n");
 		return;
 	}
+	va_start(ap, fmt);
+	int count = 1;
+	while (*fmt) {
+		switch (*fmt++) {
+		case 's':
+			s = va_arg(ap, char *);
+			sqlite3_bind_text(st, count++, s, -1, SQLITE_STATIC);
+			break;
+		case 'd':
+			d = va_arg(ap, int);
+			sqlite3_bind_int(st, count++, d);
+			break;
+		}
+	}
+	va_end(ap);
 	ret = sqlite3_step(st);
 	while (ret == SQLITE_ROW) {
 		value = sqlite3_column_text(st, field);
@@ -328,4 +347,74 @@ mp3_gettoken(const char *str, int toknum)
 	}
 	ret[size] = '\0';
 	return (ret);
+}
+
+void
+mp3_list_artist(const char *path, struct filler_data *fd)
+{
+	char *name, *album;
+
+	switch (mp3_numtoken(path)) {
+	case 1:
+		mp3_list(0, fd, "SELECT name FROM artist", "");
+		break;
+	case 2:
+		/* So, now we got to find out the artist and list its albums. */
+		name = mp3_gettoken(path, 2);
+		if (name == NULL)
+			break;
+		mp3_list(0, fd, "SELECT DISTINCT album FROM song, artist "
+		    "WHERE song.artistname = artist.name AND artist.name LIKE "
+		    "'?'", "%s", name);
+		free(name);
+		break;
+	case 3:
+		/* List songs in an album. */
+		name = mp3_gettoken(path, 2);
+		if (name == NULL)
+			break;
+		album = mp3_gettoken(path, 3);
+		if (album == NULL)
+			break;
+		mp3_list(0, fd, "SELECT title FROM song, artist WHERE "
+		    "song.artistname = artist.name AND ARTIST.name LIKE '?' "
+		    "AND song.album LIKE '?'", "%s%s", name, album);
+		free(album);
+		free(name);
+		break;
+	}
+}
+
+void
+mp3_list_genre(const char *path, struct filler_data *fd)
+{
+	char *genre, *album;
+
+	switch (mp3_numtoken(path)) {
+	case 1:
+		mp3_list(0, fd, "SELECT name FROM genre", ""); 
+		break;
+	case 2:
+		genre = mp3_gettoken(path, 2);
+		if (genre == NULL)
+			break;
+		mp3_list(0, fd, "SELECT DISTINCT album FROM song, genre WHERE"
+		    " song.genrename = genre.name AND genre.name LIKE '?'",
+		    "%s", genre);
+		free(genre);
+		break;
+	case 3:
+		genre = mp3_gettoken(path, 2);
+		if (genre == NULL)
+			break;
+		album = mp3_gettoken(path, 3);
+		if (album == NULL)
+			break;
+		mp3_list(0, fd, "SELECT title FROM song, genre WHERE "
+		    "song.genrename = genre.name AND genre.name LIKE '?' "
+		    " AND song.album LIKE '?'", "%s%s", genre, album);
+		free(album);
+		free(genre);
+		break;
+	}
 }

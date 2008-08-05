@@ -60,7 +60,6 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
 	struct filler_data fd;
-	char *album, *genre, *name, *query;
 
 	filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
@@ -80,91 +79,13 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 * 3. Return the list of those mp3s.
 	 */
 	if (strncmp(path, "/Artists", 8) == 0) {
-		switch (mp3_numtoken(path)) {
-			// XXX: Put these into generic functions that can be
-			// reused.
-			case 1:
-				mp3_list(0, &fd, "SELECT name FROM artist");
-				break;
-			case 2:
-				/* So, now we got to find out the artist and list its albums. */
-				name = mp3_gettoken(path, 2);
-				if (name == NULL)
-					break;
-				asprintf(&query, "SELECT DISTINCT album FROM "
-				    "song, artist WHERE song.artistname = "
-				    "artist.name AND artist.name LIKE '%s'",
-		 	   	    name);
-				if (query == NULL)
-					break;
-				mp3_list(0, &fd, query);
-				free(query);
-				free(name);
-				break;
-			case 3:
-				/* List songs in an album. */
-				name = mp3_gettoken(path, 2);
-				if (name == NULL)
-					break;
-				album = mp3_gettoken(path, 3);
-				if (album == NULL)
-					break;
-				asprintf(&query, "SELECT title FROM song, "
-				    "artist WHERE song.artistname = artist.name"
-				    " AND ARTIST.name LIKE '%s' AND song.album "
-				    " LIKE '%s'", name, album);
-				if (query == NULL)
-					break;
-				mp3_list(0, &fd, query);
-				free(query);
-				free(album);
-				free(name);
-				break;
-		}
+		mp3_list_artist(path, &fd);
 		return (0);
 	} else if (strncmp(path, "/Genres", 7) == 0) {
-		switch (mp3_numtoken(path)) {
-			// XXX: Put these into generic functions that can be
-			// reused.
-			case 1:
-				mp3_list(0, &fd, "SELECT name FROM genre");
-				break;
-			case 2:
-				genre = mp3_gettoken(path, 2);
-				if (genre == NULL)
-					break;
-				asprintf(&query, "SELECT DISTINCT album FROM "
-				    "song, genre WHERE song.genrename = "
-				    "genre.name AND genre.name LIKE '%s'",
-				    genre);
-				if (query == NULL)
-					break;
-				mp3_list(0, &fd, query);
-				free(query);
-				free(genre);
-				break;
-			case 3:
-				genre = mp3_gettoken(path, 2);
-				if (genre == NULL)
-					break;
-				album = mp3_gettoken(path, 3);
-				if (album == NULL)
-					break;
-				asprintf(&query, "SELECT title FROM song, genre "
-				    "WHERE song.genrename = genre.name AND "
-				    "genre.name LIKE '%s' AND song.album LIKE "
-				    "'%s'", genre, album);
-				if (query == NULL)
-					break;
-				mp3_list(0, &fd, query);
-				free(query);
-				free(album);
-				free(genre);
-				break;
-		}
+		mp3_list_genre(path, &fd);
 		return (0);
 	} else if (strcmp(path, "/Tracks") == 0) {
-		mp3_list(0, &fd, "SELECT title FROM song");
+		mp3_list(0, &fd, "SELECT title FROM song", "");
 		return (0);
 	}
 
