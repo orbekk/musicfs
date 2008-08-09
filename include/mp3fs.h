@@ -24,9 +24,16 @@ struct filler_data {
 	fuse_fill_dir_t filler;
 };
 
-void	 mp3_list(int, struct filler_data *, const char *, const char *, ...);
-void	 mp3_list_artist(char *, struct filler_data *);
-void	 mp3_list_genre(char *, struct filler_data *);
+#define LIST_DATATYPE_STRING 1
+#define LIST_DATATYPE_INT 2
+
+struct listhandle;
+struct listhandle	*mp3_list_start(int, struct filler_data *, const char *);
+void			 mp3_list_insert(struct listhandle *, void *, int);
+void			 mp3_list_finish(struct listhandle *);
+
+void	 mp3_list_artist(const char *, struct filler_data *);
+void	 mp3_list_genre(const char *, struct filler_data *);
 char	*mp3_gettoken(const char *, int);
 int	 mp3_numtoken(const char *);
 #endif

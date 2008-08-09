@@ -16,6 +16,16 @@
 #include <sqlite3.h>
 #include <debug.h>
 
+struct listhandle {
+	sqlite3 *handle;
+	sqlite3_stmt *st;
+	const char *query;
+	int field;
+	int count;
+	void *buf;
+	fuse_fill_dir_t filler;
+};
+
 sqlite3 *handle;
 
 int
@@ -224,58 +234,96 @@ mp3_scan(char *filepath)
 }
 
 /*
- * Perform query and list the result from field.
- * XXX: The varargs stuff got a bit uglier than I anticipated. I think i'd like
- * to remove it perhaps...
+ * Create a handle for listing music with a certain query. Allocate the
+ * resources and return the handle.
+ */
+struct listhandle *
+mp3_list_start(int field, struct filler_data *fd, const char *query)
+{
+	struct listhandle *lh;
+	int ret, error;
+
+	lh = malloc(sizeof(*lh));
+	if (lh == NULL)
+		return (NULL);
+	lh->filler = fd->filler;
+	lh->buf = fd->buf;
+	lh->field = field;
+	/* Open database. */
+	error = sqlite3_open(DBNAME, &lh->handle);
+	if (error) {
+		warnx("Can't open database: %s\n", sqlite3_errmsg(lh->handle));
+		sqlite3_close(lh->handle);
+		free(lh);
+		return (NULL);
+	}
+	ret = sqlite3_prepare_v2(lh->handle, query, -1, &lh->st, NULL);
+	if (ret != SQLITE_OK) {
+		free(lh);
+		return (NULL);
+	}
+	lh->query = query;
+	lh->count = 1;
+	return (lh);
+}
+
+/*
+ * Insert data that should be searched for in the list. The data is assumed to
+ * be dynamically allocated, and will be free'd when mp3_list_finish is called!
  */
 void
-mp3_list(int field, struct filler_data *fd, const char *query, const char *fmt, ...)
+mp3_list_insert(struct listhandle *lh, void *data, int type)
 {
-	sqlite3_stmt *st;
-	fuse_fill_dir_t filler;
-	void *buf;
-	const unsigned char *value;
-	char *s;
-	va_list ap;
-	int d, error, ret;
+	char *str;
+	int val;
 
-	filler = fd->filler;
-	buf = fd->buf;
-	/* Open database. */
-	error = sqlite3_open(DBNAME, &handle);
-	if (error) {
-		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
-		sqlite3_close(handle);
+	switch (type) {
+	case LIST_DATATYPE_STRING:
+		str = (char *)data;
+		sqlite3_bind_text(lh->st, lh->count++, str, -1, free);
+		break;
+	case LIST_DATATYPE_INT:
+		val = *((int *)data);
+		sqlite3_bind_int(lh->st, lh->count++, val);
+		break;
+	}
+}
+
+/*
+ * Finish a statement buildup and use the filler to put the returned query data.
+ * Free the handle when done.
+ */
+void
+mp3_list_finish(struct listhandle *lh)
+{
+	char buf[1024];
+	const unsigned char *value;
+	int ret, type, val;
+
+	if (lh == NULL)
 		return;
-	}
-	ret = sqlite3_prepare_v2(handle, query, -1, &st, NULL);
-	if (ret != SQLITE_OK) {
-	//	warnx("Error preparing statement\n");
-		return;
-	}
-	va_start(ap, fmt);
-	int count = 1;
-	while (*fmt) {
-		switch (*fmt++) {
-		case 's':
-			s = va_arg(ap, char *);
-			sqlite3_bind_text(st, count++, s, -1, SQLITE_STATIC);
-			break;
-		case 'd':
-			d = va_arg(ap, int);
-			sqlite3_bind_int(st, count++, d);
-			break;
-		}
-	}
-	va_end(ap);
-	ret = sqlite3_step(st);
+	ret = sqlite3_step(lh->st);
 	while (ret == SQLITE_ROW) {
-		value = sqlite3_column_text(st, field);
-		filler(buf, (const char *)value, NULL, 0);
-		ret = sqlite3_step(st);
+		type = sqlite3_column_type(lh->st, lh->field);
+		switch (type) {
+		case SQLITE_INTEGER:
+			val = sqlite3_column_int(lh->st, lh->field);
+			snprintf(buf, sizeof(buf), "%d", val);
+			lh->filler(lh->buf, (const char *)buf, NULL, 0);
+			break;
+		case SQLITE_TEXT:
+			value = sqlite3_column_text(lh->st, lh->field);
+			lh->filler(lh->buf, (const char *)value, NULL, 0);
+			break;
+//		default:
+//			lh->filler(lh->buf, "UNKNOWN TYPE", NULL, 0);
+		}
+		ret = sqlite3_step(lh->st);
 	}
 	// XXX: Check for errors too.
-	sqlite3_close(handle);
+	sqlite3_finalize(lh->st);
+	sqlite3_close(lh->handle);
+	free(lh);
 }
 
 /*
@@ -349,24 +397,28 @@ mp3_gettoken(const char *str, int toknum)
 	return (ret);
 }
 
+/*
+ * List artist given a path.
+ */
 void
 mp3_list_artist(const char *path, struct filler_data *fd)
 {
+	struct listhandle *lh;
 	char *name, *album;
 
 	switch (mp3_numtoken(path)) {
 	case 1:
-		mp3_list(0, fd, "SELECT name FROM artist", "");
+		lh = mp3_list_start(0, fd, "SELECT name FROM artist");
 		break;
 	case 2:
 		/* So, now we got to find out the artist and list its albums. */
 		name = mp3_gettoken(path, 2);
 		if (name == NULL)
 			break;
-		mp3_list(0, fd, "SELECT DISTINCT album FROM song, artist "
-		    "WHERE song.artistname = artist.name AND artist.name LIKE "
-		    "'?'", "%s", name);
-		free(name);
+		lh  = mp3_list_start(0, fd, "SELECT DISTINCT album FROM song, "
+		    "artist WHERE song.artistname = artist.name AND artist.name"
+		    " LIKE ?");
+		mp3_list_insert(lh, name, LIST_DATATYPE_STRING);
 		break;
 	case 3:
 		/* List songs in an album. */
@@ -376,32 +428,34 @@ mp3_list_artist(const char *path, struct filler_data *fd)
 		album = mp3_gettoken(path, 3);
 		if (album == NULL)
 			break;
-		mp3_list(0, fd, "SELECT title FROM song, artist WHERE "
-		    "song.artistname = artist.name AND ARTIST.name LIKE '?' "
-		    "AND song.album LIKE '?'", "%s%s", name, album);
-		free(album);
-		free(name);
+		lh = mp3_list_start(0, fd, "SELECT title FROM song, artist "
+		    "WHERE song.artistname = artist.name AND artist.name "
+		    "LIKE ? AND song.album LIKE ?");
+		mp3_list_insert(lh, name, LIST_DATATYPE_STRING);
+		mp3_list_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
 	}
+	mp3_list_finish(lh);
 }
 
 void
 mp3_list_genre(const char *path, struct filler_data *fd)
 {
+	struct listhandle *lh;
 	char *genre, *album;
 
 	switch (mp3_numtoken(path)) {
 	case 1:
-		mp3_list(0, fd, "SELECT name FROM genre", ""); 
+		lh = mp3_list_start(0, fd, "SELECT name FROM genre");
 		break;
 	case 2:
 		genre = mp3_gettoken(path, 2);
 		if (genre == NULL)
 			break;
-		mp3_list(0, fd, "SELECT DISTINCT album FROM song, genre WHERE"
-		    " song.genrename = genre.name AND genre.name LIKE '?'",
-		    "%s", genre);
-		free(genre);
+		lh = mp3_list_start(0, fd, "SELECT DISTINCT album FROM song, "
+		    "genre WHERE song.genrename = genre.name AND genre.name "
+		    "LIKE ?");
+		mp3_list_insert(lh, genre, LIST_DATATYPE_STRING);
 		break;
 	case 3:
 		genre = mp3_gettoken(path, 2);
@@ -410,11 +464,12 @@ mp3_list_genre(const char *path, struct filler_data *fd)
 		album = mp3_gettoken(path, 3);
 		if (album == NULL)
 			break;
-		mp3_list(0, fd, "SELECT title FROM song, genre WHERE "
-		    "song.genrename = genre.name AND genre.name LIKE '?' "
-		    " AND song.album LIKE '?'", "%s%s", genre, album);
-		free(album);
-		free(genre);
+		lh = mp3_list_start(0, fd, "SELECT title FROM song, genre WHERE"
+		    " song.genrename = genre.name AND genre.name LIKE ? "
+		    " AND song.album LIKE ?");
+		mp3_list_insert(lh, genre, LIST_DATATYPE_STRING);
+		mp3_list_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
 	}
+	mp3_list_finish(lh);
 }

@@ -60,6 +60,7 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
 	struct filler_data fd;
+	struct listhandle *lh;
 
 	filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
@@ -85,7 +86,8 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 		mp3_list_genre(path, &fd);
 		return (0);
 	} else if (strcmp(path, "/Tracks") == 0) {
-		mp3_list(0, &fd, "SELECT title FROM song", "");
+		lh = mp3_list_start(0, &fd, "SELECT title FROM song");
+		mp3_list_finish(lh);
 		return (0);
 	}
 
