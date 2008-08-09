@@ -52,6 +52,7 @@ void			 mp3_lookup_finish(struct lookuphandle *);
 
 void	 mp3_lookup_artist(const char *, struct filler_data *);
 void	 mp3_lookup_genre(const char *, struct filler_data *);
+void	 mp3_lookup_album(const char *, struct filler_data *);
 char	*mp3_gettoken(const char *, int);
 int	 mp3_numtoken(const char *);
 

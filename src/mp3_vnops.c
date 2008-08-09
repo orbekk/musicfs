@@ -23,7 +23,7 @@ char *logpath = "/home/lulf/dev/mp3fs/mp3fs.log";
 static int mp3_getattr (const char *path, struct stat *stbuf)
 {
 	struct lookuphandle *lh;
-	char *title;
+	char *title, *album;
 	int tokens;
 
 	memset (stbuf, 0, sizeof (struct stat));
@@ -32,9 +32,8 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 		stbuf->st_nlink = 2;
 		return 0;
 	}
-	if (strncmp(path, "/Artists", 8) == 0 ||
-	    strncmp(path, "/Genres", 7) == 0 ||
-	    strncmp(path, "/Albums", 7) == 0) {
+	if (strncmp(path, "/Genres", 7) == 0 ||
+	    strncmp(path, "/Artists", 8) == 0) {
 		tokens = mp3_numtoken(path);
 		switch (tokens) {
 		case 1:
@@ -48,6 +47,30 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 			stbuf->st_mode = S_IFREG | 0644;
 			stbuf->st_nlink = 1;
 			stbuf->st_size = 512;
+			return 0;
+		}
+	} else if (strncmp(path, "/Albums", 7) == 0) {
+		tokens = mp3_numtoken(path);
+		switch (tokens) {
+		case 1:
+		case 2:
+			stbuf->st_mode = S_IFDIR | 0444;
+			stbuf->st_nlink = 1;
+			stbuf->st_size = 12;
+			return (0);
+		case 3:
+			album = mp3_gettoken(path, 2);
+			if (album == NULL)
+				break;
+			title = mp3_gettoken(path, 3);
+			if (title == NULL)
+				break;
+			lh = mp3_lookup_start(0, stbuf, mp3_lookup_stat,
+			    "SELECT filepath FROM song WHERE title LIKE ? AND "
+			    "album LIKE ?");
+			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+			mp3_lookup_finish(lh);
 			return 0;
 		}
 	} else if (strncmp(path, "/Tracks", 7) == 0) {
@@ -109,10 +132,8 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 		    "SELECT DISTINCT title FROM song");
 		mp3_lookup_finish(lh);
 		return (0);
-	} else if (strcmp(path, "/Albums") == 0) {
-		lh = mp3_lookup_start(0, &fd, mp3_lookup_list,
-		    "SELECT DISTINCT album FROM song");
-		mp3_lookup_finish(lh);
+	} else if (strncmp(path, "/Albums", 7) == 0) {
+		mp3_lookup_album(path, &fd);
 		return (0);
 	}
 
@@ -123,7 +144,7 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 {
 	struct file_data fd;
 	struct lookuphandle *lh;
-	char *title;
+	char *title, *album;
 
 	lh = NULL;
 	fd.fd = -1;
@@ -140,6 +161,33 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 			if (lh == NULL)
 				return (-EIO);
 			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			break;
+		default:
+			return (-ENOENT);
+		}
+		mp3_lookup_finish(lh);
+		if (!fd.found)
+			return (-ENOENT);
+		if (fd.fd < 0)
+			return (-EIO);
+		close(fd.fd);
+		return (0);
+	} else if (strncmp(path, "/Albums", 7) == 0) {
+		switch (mp3_numtoken(path)) {
+		case 3:
+			album = mp3_gettoken(path, 2);
+			if (album == NULL)
+				break;
+			title = mp3_gettoken(path, 3);
+			if (title == NULL)
+				break;
+			lh = mp3_lookup_start(0, &fd, mp3_lookup_open,
+			    "SELECT filepath FROM song WHERE title LIKE ? AND "
+			    "album LIKE ?");
+			if (lh == NULL)
+				return (-EIO);
+			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 			break;
 		default:
 			return (-ENOENT);
@@ -168,16 +216,12 @@ static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
 {
 	struct file_data fd;
 	struct lookuphandle *lh;
-	char *title;
+	char *title, *album;
 	size_t bytes;
 
 	lh = NULL;
 	fd.fd = -1;
 	fd.found = 0;
-	if (strcmp (path, "/Artists") == 0) {
-		memcpy (buf, "Oh you wish\n", 12);
-		return 12;
-	}
 	/* Open a specific track. */
 	if (strncmp(path, "/Tracks", 7) == 0) {
 		switch (mp3_numtoken(path)) {
@@ -190,6 +234,35 @@ static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
 			if (lh == NULL)
 				return (-EIO);
 			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			break;
+		default:
+			return (-ENOENT);
+		}
+		mp3_lookup_finish(lh);
+		if (!fd.found)
+			return (-ENOENT);
+		if (fd.fd < 0)
+			return (-EIO);
+		lseek(fd.fd, offset, SEEK_CUR);
+		bytes = read(fd.fd, buf, size);
+		close(fd.fd);
+		return (bytes);
+	} else if (strncmp(path, "/Albums", 7) == 0) {
+		switch (mp3_numtoken(path)) {
+		case 3:
+			album = mp3_gettoken(path, 2);
+			if (album == NULL)
+				break;
+			title = mp3_gettoken(path, 3);
+			if (title == NULL)
+				break;
+			lh = mp3_lookup_start(0, &fd, mp3_lookup_open,
+			    "SELECT filepath FROM song WHERE title LIKE ? AND "
+			    "album LIKE ?");
+			if (lh == NULL)
+				return (-EIO);
+			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 			break;
 		default:
 			return (-ENOENT);

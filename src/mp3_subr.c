@@ -405,6 +405,33 @@ mp3_gettoken(const char *str, int toknum)
 }
 
 /*
+ * List album given a path.
+ */
+void
+mp3_lookup_album(const char *path, struct filler_data *fd)
+{
+	struct lookuphandle *lh;
+	char *album;
+
+	switch (mp3_numtoken(path)) {
+	case 1:
+		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		    "SELECT DISTINCT album FROM song");
+		break;
+	case 2:
+		/* So, now we got to find out the artist and list its albums. */
+		album = mp3_gettoken(path, 2);
+		if (album == NULL)
+			break;
+		lh  = mp3_lookup_start(0, fd, mp3_lookup_list,
+		    "SELECT DISTINCT title FROM song WHERE album LIKE ?");
+		mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+		break;
+	}
+	mp3_lookup_finish(lh);
+}
+
+/*
  * List artist given a path.
  */
 void
@@ -500,7 +527,7 @@ mp3_lookup_list(void *data, const char *str)
 
 	fd = (struct filler_data *)data;
 	fd->filler(fd->buf, str, NULL, 0);
-	return (1);
+	return (0);
 }
 
 /*
@@ -512,11 +539,8 @@ mp3_lookup_open(void *data, const char *str)
 	struct file_data *fd;
 
 	fd = (struct file_data *)data;
-	if (!fd->found) {
-		fd->fd = open(str, O_RDONLY);
-		fd->found = 1;
-		return (0);
-	}
+	fd->fd = open(str, O_RDONLY);
+	fd->found = 1;
 	return (1);
 }
 
@@ -531,6 +555,6 @@ mp3_lookup_stat(void *data, const char *str)
 
 	st = (struct stat *)data;
 	if (stat(str, st) < 0)
-		return (-1);
-	return (0);
+		return (0);
+	return (1);
 }
