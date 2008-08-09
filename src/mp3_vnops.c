@@ -61,7 +61,7 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
 	struct filler_data fd;
-	struct listhandle *lh;
+	struct lookuphandle *lh;
 
 	filler (buf, ".", NULL, 0);
 	filler (buf, "..", NULL, 0);
@@ -82,18 +82,20 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 * 3. Return the list of those mp3s.
 	 */
 	if (strncmp(path, "/Artists", 8) == 0) {
-		mp3_list_artist(path, &fd);
+		mp3_lookup_artist(path, &fd);
 		return (0);
 	} else if (strncmp(path, "/Genres", 7) == 0) {
-		mp3_list_genre(path, &fd);
+		mp3_lookup_genre(path, &fd);
 		return (0);
 	} else if (strcmp(path, "/Tracks") == 0) {
-		lh = mp3_list_start(0, &fd, "SELECT title FROM song");
-		mp3_list_finish(lh);
+		lh = mp3_lookup_start(0, &fd, mp3_lookup_list,
+		    "SELECT title FROM song");
+		mp3_lookup_finish(lh);
 		return (0);
 	} else if (strcmp(path, "/Albums") == 0) {
-		lh = mp3_list_start(0, &fd, "SELECT DISTINCT album FROM song");
-		mp3_list_finish(lh);
+		lh = mp3_lookup_start(0, &fd, mp3_lookup_list,
+		    "SELECT DISTINCT album FROM song");
+		mp3_lookup_finish(lh);
 		return (0);
 	}
 
@@ -102,7 +104,7 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int mp3_open (const char *path, struct fuse_file_info *fi)
 {
-	if (strcmp (path, "/Artists") == 0)
+	if (strcmp (path, "/Tracks") == 0)
 		return 0;
 	/*
 	 * 1. Have a lookup cache for names?.

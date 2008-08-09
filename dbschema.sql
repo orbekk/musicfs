@@ -11,6 +11,7 @@ CREATE TABLE song (
 	album varchar(200),
 	artistname varchar(200),
 	genrename varchar(200),
+	filepath varchar(255),
 	year int,
 	PRIMARY KEY(title, artistname, year)
 );

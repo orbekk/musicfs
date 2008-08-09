@@ -16,14 +16,14 @@
 #include <sqlite3.h>
 #include <debug.h>
 
-struct listhandle {
+struct lookuphandle {
 	sqlite3 *handle;
 	sqlite3_stmt *st;
 	const char *query;
 	int field;
 	int count;
-	void *buf;
-	fuse_fill_dir_t filler;
+	void *priv;
+	lookup_fn_t *lookup;
 };
 
 sqlite3 *handle;
@@ -209,7 +209,8 @@ mp3_scan(char *filepath)
 			break;
 		/* Now, finally insert it. */
 		ret = sqlite3_prepare_v2(handle, "INSERT INTO song(title, "
-		    "artistname, album, genrename, year) VALUES(?, ?, ?, ?, ?)",
+		    "artistname, album, genrename, year, filepath) "
+		    "VALUES(?, ?, ?, ?, ?, ?)",
 		    -1, &st, NULL);
 		if (ret != SQLITE_OK) {
 			warnx("Error preparing insert statement: %s\n",
@@ -221,6 +222,7 @@ mp3_scan(char *filepath)
 		sqlite3_bind_text(st, 3, album, -1, SQLITE_STATIC);
 		sqlite3_bind_text(st, 4, genre, -1, SQLITE_STATIC);
 		sqlite3_bind_int(st, 5, year);
+		sqlite3_bind_text(st, 6, filepath, -1, SQLITE_STATIC);
 		ret = sqlite3_step(st);
 		sqlite3_finalize(st);
 		if (ret != SQLITE_DONE) {
@@ -237,18 +239,18 @@ mp3_scan(char *filepath)
  * Create a handle for listing music with a certain query. Allocate the
  * resources and return the handle.
  */
-struct listhandle *
-mp3_list_start(int field, struct filler_data *fd, const char *query)
+struct lookuphandle *
+mp3_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 {
-	struct listhandle *lh;
+	struct lookuphandle *lh;
 	int ret, error;
 
 	lh = malloc(sizeof(*lh));
 	if (lh == NULL)
 		return (NULL);
-	lh->filler = fd->filler;
-	lh->buf = fd->buf;
 	lh->field = field;
+	lh->lookup = fn;
+	lh->priv = data;
 	/* Open database. */
 	error = sqlite3_open(DBNAME, &lh->handle);
 	if (error) {
@@ -269,10 +271,10 @@ mp3_list_start(int field, struct filler_data *fd, const char *query)
 
 /*
  * Insert data that should be searched for in the list. The data is assumed to
- * be dynamically allocated, and will be free'd when mp3_list_finish is called!
+ * be dynamically allocated, and will be free'd when mp3_lookup_finish is called!
  */
 void
-mp3_list_insert(struct listhandle *lh, void *data, int type)
+mp3_lookup_insert(struct lookuphandle *lh, void *data, int type)
 {
 	char *str;
 	int val;
@@ -290,11 +292,11 @@ mp3_list_insert(struct listhandle *lh, void *data, int type)
 }
 
 /*
- * Finish a statement buildup and use the filler to put the returned query data.
- * Free the handle when done.
+ * Finish a statement buildup and use the lookup function to operate on the
+ * returned data. Free the handle when done.
  */
 void
-mp3_list_finish(struct listhandle *lh)
+mp3_lookup_finish(struct lookuphandle *lh)
 {
 	char buf[1024];
 	const unsigned char *value;
@@ -309,11 +311,11 @@ mp3_list_finish(struct listhandle *lh)
 		case SQLITE_INTEGER:
 			val = sqlite3_column_int(lh->st, lh->field);
 			snprintf(buf, sizeof(buf), "%d", val);
-			lh->filler(lh->buf, (const char *)buf, NULL, 0);
+			lh->lookup(lh->priv, (const char *)buf);
 			break;
 		case SQLITE_TEXT:
 			value = sqlite3_column_text(lh->st, lh->field);
-			lh->filler(lh->buf, (const char *)value, NULL, 0);
+			lh->lookup(lh->priv, (const char *)value);
 			break;
 //		default:
 //			lh->filler(lh->buf, "UNKNOWN TYPE", NULL, 0);
@@ -401,24 +403,26 @@ mp3_gettoken(const char *str, int toknum)
  * List artist given a path.
  */
 void
-mp3_list_artist(const char *path, struct filler_data *fd)
+mp3_lookup_artist(const char *path, struct filler_data *fd)
 {
-	struct listhandle *lh;
+	struct lookuphandle *lh;
 	char *name, *album;
 
 	switch (mp3_numtoken(path)) {
 	case 1:
-		lh = mp3_list_start(0, fd, "SELECT name FROM artist");
+		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		    "SELECT name FROM artist");
 		break;
 	case 2:
 		/* So, now we got to find out the artist and list its albums. */
 		name = mp3_gettoken(path, 2);
 		if (name == NULL)
 			break;
-		lh  = mp3_list_start(0, fd, "SELECT DISTINCT album FROM song, "
+		lh  = mp3_lookup_start(0, fd, mp3_lookup_list,
+		    "SELECT DISTINCT album FROM song, "
 		    "artist WHERE song.artistname = artist.name AND artist.name"
 		    " LIKE ?");
-		mp3_list_insert(lh, name, LIST_DATATYPE_STRING);
+		mp3_lookup_insert(lh, name, LIST_DATATYPE_STRING);
 		break;
 	case 3:
 		/* List songs in an album. */
@@ -428,34 +432,40 @@ mp3_list_artist(const char *path, struct filler_data *fd)
 		album = mp3_gettoken(path, 3);
 		if (album == NULL)
 			break;
-		lh = mp3_list_start(0, fd, "SELECT title FROM song, artist "
+		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		    "SELECT title FROM song, artist "
 		    "WHERE song.artistname = artist.name AND artist.name "
 		    "LIKE ? AND song.album LIKE ?");
-		mp3_list_insert(lh, name, LIST_DATATYPE_STRING);
-		mp3_list_insert(lh, album, LIST_DATATYPE_STRING);
+		mp3_lookup_insert(lh, name, LIST_DATATYPE_STRING);
+		mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
 	}
-	mp3_list_finish(lh);
+	mp3_lookup_finish(lh);
 }
 
+/*
+ * Looks up tracks given a genre, or all genres.
+ */
 void
-mp3_list_genre(const char *path, struct filler_data *fd)
+mp3_lookup_genre(const char *path, struct filler_data *fd)
 {
-	struct listhandle *lh;
+	struct lookuphandle *lh;
 	char *genre, *album;
 
 	switch (mp3_numtoken(path)) {
 	case 1:
-		lh = mp3_list_start(0, fd, "SELECT name FROM genre");
+		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		    "SELECT name FROM genre");
 		break;
 	case 2:
 		genre = mp3_gettoken(path, 2);
 		if (genre == NULL)
 			break;
-		lh = mp3_list_start(0, fd, "SELECT DISTINCT album FROM song, "
+		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		    "SELECT DISTINCT album FROM song, "
 		    "genre WHERE song.genrename = genre.name AND genre.name "
 		    "LIKE ?");
-		mp3_list_insert(lh, genre, LIST_DATATYPE_STRING);
+		mp3_lookup_insert(lh, genre, LIST_DATATYPE_STRING);
 		break;
 	case 3:
 		genre = mp3_gettoken(path, 2);
@@ -464,12 +474,25 @@ mp3_list_genre(const char *path, struct filler_data *fd)
 		album = mp3_gettoken(path, 3);
 		if (album == NULL)
 			break;
-		lh = mp3_list_start(0, fd, "SELECT title FROM song, genre WHERE"
+		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		    "SELECT title FROM song, genre WHERE"
 		    " song.genrename = genre.name AND genre.name LIKE ? "
 		    " AND song.album LIKE ?");
-		mp3_list_insert(lh, genre, LIST_DATATYPE_STRING);
-		mp3_list_insert(lh, album, LIST_DATATYPE_STRING);
+		mp3_lookup_insert(lh, genre, LIST_DATATYPE_STRING);
+		mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
 	}
-	mp3_list_finish(lh);
+	mp3_lookup_finish(lh);
+}
+
+/*
+ * Lookup function for filling given data into a filler.
+ */
+void
+mp3_lookup_list(void *data, const char *str)
+{
+	struct filler_data *fd;
+
+	fd = (struct filler_data *)data;
+	fd->filler(fd->buf, str, NULL, 0);
 }

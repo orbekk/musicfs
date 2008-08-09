@@ -17,7 +17,7 @@ void traverse_hierarchy(char *, traverse_fn_t);
 traverse_fn_t mp3_scan;
 
 /*
- * Data passed to mp3_list.
+ * Data passed to mp3_lookup.
  */
 struct filler_data {
 	void *buf;
@@ -27,13 +27,17 @@ struct filler_data {
 #define LIST_DATATYPE_STRING 1
 #define LIST_DATATYPE_INT 2
 
-struct listhandle;
-struct listhandle	*mp3_list_start(int, struct filler_data *, const char *);
-void			 mp3_list_insert(struct listhandle *, void *, int);
-void			 mp3_list_finish(struct listhandle *);
+typedef void lookup_fn_t(void *, const char *);
+lookup_fn_t mp3_lookup_list;
+struct lookuphandle;
 
-void	 mp3_list_artist(const char *, struct filler_data *);
-void	 mp3_list_genre(const char *, struct filler_data *);
+struct lookuphandle	*mp3_lookup_start(int, void *, lookup_fn_t *, const char *);
+void			 mp3_lookup_insert(struct lookuphandle *, void *, int);
+void			 mp3_lookup_finish(struct lookuphandle *);
+
+void	 mp3_lookup_artist(const char *, struct filler_data *);
+void	 mp3_lookup_genre(const char *, struct filler_data *);
 char	*mp3_gettoken(const char *, int);
 int	 mp3_numtoken(const char *);
+
 #endif
