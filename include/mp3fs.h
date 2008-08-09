@@ -17,18 +17,32 @@ void traverse_hierarchy(char *, traverse_fn_t);
 traverse_fn_t mp3_scan;
 
 /*
- * Data passed to mp3_lookup.
+ * Data passed to mp3_lookup_list
  */
 struct filler_data {
 	void *buf;
 	fuse_fill_dir_t filler;
 };
 
+/*
+ * Data passed to mp3_lookup_open
+ */
+struct file_data {
+	int fd;
+	int found;
+};
+
 #define LIST_DATATYPE_STRING 1
 #define LIST_DATATYPE_INT 2
 
 typedef void lookup_fn_t(void *, const char *);
+/* Lookup function listing each row. */
 lookup_fn_t mp3_lookup_list;
+/* Lookup function opening the first file match. */
+lookup_fn_t mp3_lookup_open;
+/* Lookup function stat'ing a file. */
+lookup_fn_t mp3_lookup_stat;
+
 struct lookuphandle;
 
 struct lookuphandle	*mp3_lookup_start(int, void *, lookup_fn_t *, const char *);

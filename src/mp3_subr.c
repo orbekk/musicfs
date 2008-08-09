@@ -496,3 +496,32 @@ mp3_lookup_list(void *data, const char *str)
 	fd = (struct filler_data *)data;
 	fd->filler(fd->buf, str, NULL, 0);
 }
+
+/*
+ * Lookup a file and open it if found.
+ */
+void
+mp3_lookup_open(void *data, const char *str)
+{
+	struct file_data *fd;
+
+	fd = (struct file_data *)data;
+	if (!fd->found) {
+		fd->fd = open(str, O_RDONLY);
+		fd->found = 1;
+	}
+}
+
+/*
+ * Stat a file.
+ * XXX: watch out for duplicates, we might stat more than once.
+ */
+void
+mp3_lookup_stat(void *data, const char *str)
+{
+	struct stat *st;
+
+	st = (struct stat *)data;
+	if (stat(str, st) < 0)
+		return;
+}
