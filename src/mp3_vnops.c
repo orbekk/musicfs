@@ -29,7 +29,8 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 	}
 	if (strcmp(path, "/Artists") == 0 ||
 	    strcmp(path, "/Genres") == 0 ||
-	    strcmp(path, "/Tracks") == 0) {
+	    strcmp(path, "/Tracks") == 0 ||
+	    strcmp(path, "/Albums") == 0) {
 		stbuf->st_mode	= S_IFDIR | 0444;
 		stbuf->st_nlink = 1;
 		stbuf->st_size	= 12;
@@ -71,6 +72,7 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 		filler(buf, "Artists", NULL, 0);
 		filler(buf, "Genres", NULL, 0);
 		filler(buf, "Tracks", NULL, 0);
+		filler(buf, "Albums", NULL, 0);
 		return (0);
 	}
 
@@ -87,6 +89,10 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 		return (0);
 	} else if (strcmp(path, "/Tracks") == 0) {
 		lh = mp3_list_start(0, &fd, "SELECT title FROM song");
+		mp3_list_finish(lh);
+		return (0);
+	} else if (strcmp(path, "/Albums") == 0) {
+		lh = mp3_list_start(0, &fd, "SELECT DISTINCT album FROM song");
 		mp3_list_finish(lh);
 		return (0);
 	}
