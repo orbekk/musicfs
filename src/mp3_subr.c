@@ -300,7 +300,7 @@ mp3_lookup_finish(struct lookuphandle *lh)
 {
 	char buf[1024];
 	const unsigned char *value;
-	int ret, type, val;
+	int ret, type, val, finished;
 
 	if (lh == NULL)
 		return;
@@ -311,15 +311,20 @@ mp3_lookup_finish(struct lookuphandle *lh)
 		case SQLITE_INTEGER:
 			val = sqlite3_column_int(lh->st, lh->field);
 			snprintf(buf, sizeof(buf), "%d", val);
-			lh->lookup(lh->priv, (const char *)buf);
+			finished = lh->lookup(lh->priv, (const char *)buf);
 			break;
 		case SQLITE_TEXT:
 			value = sqlite3_column_text(lh->st, lh->field);
-			lh->lookup(lh->priv, (const char *)value);
+			finished = lh->lookup(lh->priv, (const char *)value);
+			break;
+		default:
+			finished = 0;
 			break;
 //		default:
 //			lh->filler(lh->buf, "UNKNOWN TYPE", NULL, 0);
 		}
+		if (finished)
+			break;
 		ret = sqlite3_step(lh->st);
 	}
 	// XXX: Check for errors too.
@@ -488,19 +493,20 @@ mp3_lookup_genre(const char *path, struct filler_data *fd)
 /*
  * Lookup function for filling given data into a filler.
  */
-void
+int
 mp3_lookup_list(void *data, const char *str)
 {
 	struct filler_data *fd;
 
 	fd = (struct filler_data *)data;
 	fd->filler(fd->buf, str, NULL, 0);
+	return (1);
 }
 
 /*
  * Lookup a file and open it if found.
  */
-void
+int
 mp3_lookup_open(void *data, const char *str)
 {
 	struct file_data *fd;
@@ -509,19 +515,22 @@ mp3_lookup_open(void *data, const char *str)
 	if (!fd->found) {
 		fd->fd = open(str, O_RDONLY);
 		fd->found = 1;
+		return (0);
 	}
+	return (1);
 }
 
 /*
  * Stat a file.
  * XXX: watch out for duplicates, we might stat more than once.
  */
-void
+int
 mp3_lookup_stat(void *data, const char *str)
 {
 	struct stat *st;
 
 	st = (struct stat *)data;
 	if (stat(str, st) < 0)
-		return;
+		return (-1);
+	return (0);
 }

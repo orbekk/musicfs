@@ -35,7 +35,8 @@ struct file_data {
 #define LIST_DATATYPE_STRING 1
 #define LIST_DATATYPE_INT 2
 
-typedef void lookup_fn_t(void *, const char *);
+/* A lookup functions returns 0 if it's finished. */
+typedef int lookup_fn_t(void *, const char *);
 /* Lookup function listing each row. */
 lookup_fn_t mp3_lookup_list;
 /* Lookup function opening the first file match. */
