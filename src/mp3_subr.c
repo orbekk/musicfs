@@ -93,10 +93,12 @@ mp3_scan(char *filepath)
 	TagLib_File *file;
 	TagLib_Tag *tag;
 	char *artist, *album, *genre, *title;
+	const char *extension;
 	int ret;
 	unsigned int year;
 	sqlite3_stmt *st;
-
+	struct stat fstat;
+	
 	file = taglib_file_new(filepath);
 	/* XXX: errmsg. */
 	if (file == NULL)
@@ -104,6 +106,11 @@ mp3_scan(char *filepath)
 	tag = taglib_file_tag(file);
 	if (tag == NULL) {
 		printf("error!\n");
+		return;
+	}
+
+	if (stat(filepath, &fstat) < 0) {
+		perror("stat");
 		return;
 	}
 
@@ -188,6 +195,13 @@ mp3_scan(char *filepath)
 		title = taglib_tag_title(tag);
 		album = taglib_tag_album(tag);
 		year = taglib_tag_year(tag);
+		extension = strrchr(filepath, (int)'.');
+		if (extension == NULL)
+			extension = "";
+		else
+			/* Drop the '.' */
+			extension++;
+		
 		if (title == NULL || genre == NULL || artist == NULL ||
 		    album == NULL)
 			break;
@@ -205,13 +219,16 @@ mp3_scan(char *filepath)
 		sqlite3_bind_int(st, 2, year);
 		ret = sqlite3_step(st);
 		sqlite3_finalize(st);
-		/* Already exists or generic error. */
+		if (ret == SQLITE_ROW)
+			/* Already exists. XXX: Update it if mtime mismatches */
+			break;
 		if (ret != SQLITE_DONE)
+			/* SQL Error. */
 			break;
 		/* Now, finally insert it. */
 		ret = sqlite3_prepare_v2(handle, "INSERT INTO song(title, "
-		    "artistname, album, genrename, year, filepath) "
-		    "VALUES(?, ?, ?, ?, ?, ?)",
+		    "artistname, album, genrename, year, filepath, mtime, "
+		    "extension) VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
 		    -1, &st, NULL);
 		if (ret != SQLITE_OK) {
 			warnx("Error preparing insert statement: %s\n",
@@ -224,6 +241,8 @@ mp3_scan(char *filepath)
 		sqlite3_bind_text(st, 4, genre, -1, SQLITE_STATIC);
 		sqlite3_bind_int(st, 5, year);
 		sqlite3_bind_text(st, 6, filepath, -1, SQLITE_STATIC);
+		sqlite3_bind_int(st, 7, fstat.st_mtime);
+		sqlite3_bind_text(st, 8, extension, -1, SQLITE_STATIC);
 		ret = sqlite3_step(st);
 		sqlite3_finalize(st);
 		if (ret != SQLITE_DONE) {

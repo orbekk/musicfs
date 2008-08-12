@@ -13,6 +13,8 @@ CREATE TABLE song (
 	genrename varchar(200),
 	filepath varchar(255),
 	year int,
+	extension varchar(50),
+	mtime int,
 	PRIMARY KEY(title, artistname, year)
 );
 
