@@ -143,81 +143,20 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 static int mp3_open (const char *path, struct fuse_file_info *fi)
 {
 	struct file_data fd;
-	struct lookuphandle *lh;
-	char *title, *album, *artist;
-
-	lh = NULL;
 	fd.fd = -1;
 	fd.found = 0;
-	/* Open a specific track. */
-	if (strncmp(path, "/Tracks", 7) == 0) {
-		switch (mp3_numtoken(path)) {
-		case 2:
-			title = mp3_gettoken(path, 2);
-			if (title == NULL)
-				break;
-			lh = mp3_lookup_start(0, &fd, mp3_lookup_open,
-			    "SELECT filepath FROM song WHERE title LIKE ?");
-			if (lh == NULL)
-				return (-EIO);
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
-			break;
-		default:
-			return (-ENOENT);
-		}
-	} else if (strncmp(path, "/Albums", 7) == 0) {
-		switch (mp3_numtoken(path)) {
-		case 3:
-			album = mp3_gettoken(path, 2);
-			if (album == NULL)
-				break;
-			title = mp3_gettoken(path, 3);
-			if (title == NULL)
-				break;
-			lh = mp3_lookup_start(0, &fd, mp3_lookup_open,
-			    "SELECT filepath FROM song WHERE title LIKE ? AND "
-			    "album LIKE ?");
-			if (lh == NULL)
-				return (-EIO);
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
-			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
-			break;
-		default:
-			return (-ENOENT);
-		}
-	} else if (strncmp(path, "/Artists", 8) == 0) {
-		switch (mp3_numtoken(path)) {
-		case 4:
-			artist = mp3_gettoken(path, 2);
-			album  = mp3_gettoken(path, 3);
-			title  = mp3_gettoken(path, 4);
-			DEBUG("artist(%s) album(%s) title(%s)\n", artist, album, title);
-			if (!(artist && album && title)) {
-				break;
-			}
-			lh = mp3_lookup_start(0, &fd, mp3_lookup_open,
-			    "SELECT filepath FROM song WHERE artistname LIKE ? AND "
-			    "album LIKE ? AND title LIKE ?");
-			if (lh == NULL)
-			    return (-EIO);
-			mp3_lookup_insert(lh, artist, LIST_DATATYPE_STRING);
-			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
-			break;
-		default:
-			return (-ENOENT);
-		}
-	}
 
-	if (lh) {
-		mp3_lookup_finish(lh);
-		if (!fd.found)
-			return (-ENOENT);
-		if (fd.fd < 0)
-			return (-EIO);
-		close(fd.fd);
-		return (0);
-	}
+	int status = mp3_file_data_for_path(path, &fd);
+	if (status != 0)
+		return (status);
+
+	if (!fd.found)
+		return (-ENOENT);
+	if (fd.fd < 0)
+		return (-EIO);
+	close(fd.fd);
+
+	return (0);
 
 	/*
 	 * 1. Have a lookup cache for names?.
@@ -227,81 +166,34 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 	 * 3. Put the mnode of the mp3 in our cache.
 	 * 4. Signal in mnode that the mp3 is being read?
 	 */
-	return -ENOENT;
 }
 
 static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
 					 struct fuse_file_info *fi)
 {
 	struct file_data fd;
-	struct lookuphandle *lh;
-	char *title, *album;
-	size_t bytes;
-
-	lh = NULL;
 	fd.fd = -1;
 	fd.found = 0;
-	/* Open a specific track. */
-	if (strncmp(path, "/Tracks", 7) == 0) {
-		switch (mp3_numtoken(path)) {
-		case 2:
-			title = mp3_gettoken(path, 2);
-			if (title == NULL)
-				break;
-			lh = mp3_lookup_start(0, &fd, mp3_lookup_open,
-			    "SELECT filepath FROM song WHERE title LIKE ?");
-			if (lh == NULL)
-				return (-EIO);
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
-			break;
-		default:
-			return (-ENOENT);
-		}
-		mp3_lookup_finish(lh);
-		if (!fd.found)
-			return (-ENOENT);
-		if (fd.fd < 0)
-			return (-EIO);
-		lseek(fd.fd, offset, SEEK_CUR);
-		bytes = read(fd.fd, buf, size);
-		close(fd.fd);
-		return (bytes);
-	} else if (strncmp(path, "/Albums", 7) == 0) {
-		switch (mp3_numtoken(path)) {
-		case 3:
-			album = mp3_gettoken(path, 2);
-			if (album == NULL)
-				break;
-			title = mp3_gettoken(path, 3);
-			if (title == NULL)
-				break;
-			lh = mp3_lookup_start(0, &fd, mp3_lookup_open,
-			    "SELECT filepath FROM song WHERE title LIKE ? AND "
-			    "album LIKE ?");
-			if (lh == NULL)
-				return (-EIO);
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
-			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
-			break;
-		default:
-			return (-ENOENT);
-		}
-		mp3_lookup_finish(lh);
-		if (!fd.found)
-			return (-ENOENT);
-		if (fd.fd < 0)
-			return (-EIO);
-		lseek(fd.fd, offset, SEEK_CUR);
-		bytes = read(fd.fd, buf, size);
-		close(fd.fd);
-		return (bytes);
-	}
+	size_t bytes;
+
+	int status = mp3_file_data_for_path(path, &fd);
+	if (status != 0)
+		return (status);
+
+	if (!fd.found)
+		return (-ENOENT);
+	if (fd.fd < 0)
+		return (-EIO);
+	lseek(fd.fd, offset, SEEK_CUR);
+	bytes = read(fd.fd, buf, size);
+	close(fd.fd);
+	return (bytes);
+
 	/*
 	 * 1. Find the mnode given the path. If not in cache, read through mp3
 	 *    list to find it. 
 	 * 2. Read the offset of the mp3 and return the data.
 	 */
-	return -ENOENT;
 }
 
 static struct fuse_operations mp3_ops = {
