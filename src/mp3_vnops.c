@@ -144,7 +144,7 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 {
 	struct file_data fd;
 	struct lookuphandle *lh;
-	char *title, *album;
+	char *title, *album, *artist;
 
 	lh = NULL;
 	fd.fd = -1;
@@ -165,13 +165,6 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 		default:
 			return (-ENOENT);
 		}
-		mp3_lookup_finish(lh);
-		if (!fd.found)
-			return (-ENOENT);
-		if (fd.fd < 0)
-			return (-EIO);
-		close(fd.fd);
-		return (0);
 	} else if (strncmp(path, "/Albums", 7) == 0) {
 		switch (mp3_numtoken(path)) {
 		case 3:
@@ -192,6 +185,31 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 		default:
 			return (-ENOENT);
 		}
+	} else if (strncmp(path, "/Artists", 8) == 0) {
+		switch (mp3_numtoken(path)) {
+		case 4:
+			artist = mp3_gettoken(path, 2);
+			album  = mp3_gettoken(path, 3);
+			title  = mp3_gettoken(path, 4);
+			DEBUG("artist(%s) album(%s) title(%s)\n", artist, album, title);
+			if (!(artist && album && title)) {
+				break;
+			}
+			lh = mp3_lookup_start(0, &fd, mp3_lookup_open,
+			    "SELECT filepath FROM song WHERE artistname LIKE ? AND "
+			    "album LIKE ? AND title LIKE ?");
+			if (lh == NULL)
+			    return (-EIO);
+			mp3_lookup_insert(lh, artist, LIST_DATATYPE_STRING);
+			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			break;
+		default:
+			return (-ENOENT);
+		}
+	}
+
+	if (lh) {
 		mp3_lookup_finish(lh);
 		if (!fd.found)
 			return (-ENOENT);
@@ -200,6 +218,7 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 		close(fd.fd);
 		return (0);
 	}
+
 	/*
 	 * 1. Have a lookup cache for names?.
 	 *    Parse Genre, Album, Artist etc.
