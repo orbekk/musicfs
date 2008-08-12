@@ -5,9 +5,10 @@
 #ifdef DEBUGGING
 #  include <stdio.h>
 #  define DEBUGPATH "debug.txt"
-#  define DEBUG(...) FILE *__f491 = fopen(DEBUGPATH, "a"); \
-                     fprintf (__f491, __VA_ARGS__);      \
-                     fclose(__f491);
+FILE *__debug_handle__;
+#  define DEBUG(...) __debug_handle__ = fopen(DEBUGPATH, "a"); \
+                     fprintf (__debug_handle__, __VA_ARGS__);      \
+                     fclose(__debug_handle__);
 #else
 #  define DEBUG(...)
 #endif 
