@@ -643,3 +643,56 @@ mp3_lookup_stat(void *data, const char *str)
 		return (0);
 	return (1);
 }
+
+/*
+ * Guess on a filetype for a path.
+ *
+ * Examples:
+ *
+ * - /Artists/Whoever should be a directory, since it's an
+ *   Album.
+ *
+ * - /Tracks/Whatever should be a file, since Whatever is a song
+ *
+ * Note: This should only be used for paths inside the mp3fs
+ * directories (Artists, Tracks, ...)
+ */
+enum mp3_filetype
+mp3_get_filetype(const char *path) {
+	int tokens = mp3_numtoken(path);
+
+	if (strncmp(path, "/Genres", 7) == 0 ||
+	    strncmp(path, "/Artists", 8) == 0) {
+		switch (tokens) {
+		case 1:
+		case 2:
+		case 3:
+			return (MP3_DIRECTORY);
+		case 4:
+			return (MP3_FILE);
+		default:
+			return (MP3_NOTFOUND);
+		}
+	} else if (strncmp(path, "/Albums", 7) == 0) {
+		switch (tokens) {
+		case 1:
+		case 2:
+			return (MP3_DIRECTORY);
+		case 3:
+			return (MP3_FILE);
+		default:
+			return (MP3_NOTFOUND);
+		}
+	} else if (strncmp(path, "/Tracks", 7) == 0) {
+		switch (tokens) {
+		case 1:
+			return (MP3_DIRECTORY);
+		case 2:
+			return (MP3_FILE);
+		default:
+			return (MP3_NOTFOUND);
+		}
+	} else {
+		return (MP3_NOTFOUND);
+	}
+}

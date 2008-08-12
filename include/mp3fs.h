@@ -35,6 +35,8 @@ struct file_data {
 #define LIST_DATATYPE_STRING 1
 #define LIST_DATATYPE_INT 2
 
+enum mp3_filetype { MP3_NOTFOUND, MP3_FILE, MP3_DIRECTORY };
+
 /* A lookup functions returns 0 if it's finished. */
 typedef int lookup_fn_t(void *, const char *);
 /* Lookup function listing each row. */
@@ -57,4 +59,5 @@ char	*mp3_gettoken(const char *, int);
 int	 mp3_numtoken(const char *);
 int      mp3_file_data_for_path(const char *, void *);
 
+enum mp3_filetype mp3_get_filetype(const char *);
 #endif

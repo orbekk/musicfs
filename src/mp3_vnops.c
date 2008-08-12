@@ -22,78 +22,46 @@ char *logpath = "/home/lulf/dev/mp3fs/mp3fs.log";
 
 static int mp3_getattr (const char *path, struct stat *stbuf)
 {
-	struct lookuphandle *lh;
-	char *title, *album;
-	int tokens;
+	struct file_data fd;
+	fd.fd = -1;
+	fd.found = 0;
 
+	int status = 0;
 	memset (stbuf, 0, sizeof (struct stat));
+
 	if (strcmp (path, "/") == 0) {
 		stbuf->st_mode = S_IFDIR | 0755;
 		stbuf->st_nlink = 2;
 		return 0;
 	}
-	if (strncmp(path, "/Genres", 7) == 0 ||
-	    strncmp(path, "/Artists", 8) == 0) {
-		tokens = mp3_numtoken(path);
-		switch (tokens) {
-		case 1:
-		case 2:
-		case 3:
-			stbuf->st_mode = S_IFDIR | 0444;
-			stbuf->st_nlink = 1;
-			stbuf->st_size = 12;
-			return 0;
-		case 4:
-			stbuf->st_mode = S_IFREG | 0644;
-			stbuf->st_nlink = 1;
-			stbuf->st_size = 512;
-			return 0;
-		}
-	} else if (strncmp(path, "/Albums", 7) == 0) {
-		tokens = mp3_numtoken(path);
-		switch (tokens) {
-		case 1:
-		case 2:
-			stbuf->st_mode = S_IFDIR | 0444;
-			stbuf->st_nlink = 1;
-			stbuf->st_size = 12;
-			return (0);
-		case 3:
-			album = mp3_gettoken(path, 2);
-			if (album == NULL)
-				break;
-			title = mp3_gettoken(path, 3);
-			if (title == NULL)
-				break;
-			lh = mp3_lookup_start(0, stbuf, mp3_lookup_stat,
-			    "SELECT filepath FROM song WHERE title LIKE ? AND "
-			    "album LIKE ?");
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
-			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
-			mp3_lookup_finish(lh);
-			return 0;
-		}
-	} else if (strncmp(path, "/Tracks", 7) == 0) {
-		tokens = mp3_numtoken(path);
-		switch (tokens) {
-		case 1:
-			stbuf->st_mode = S_IFDIR | 0444;
-			stbuf->st_nlink = 1;
-			stbuf->st_size = 12;
-			return 0;
-		case 2:
-			title = mp3_gettoken(path, 2);
-			if (title == NULL)
-				break;
-			lh = mp3_lookup_start(0, stbuf, mp3_lookup_stat,
-			    "SELECT filepath FROM song WHERE title LIKE ?");
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
-			mp3_lookup_finish(lh);
-			break;
-		}
+
+	enum mp3_filetype type = mp3_get_filetype(path);
+	switch (type) {
+	case MP3_DIRECTORY:
+		stbuf->st_mode = S_IFDIR | 0444;
+		stbuf->st_nlink = 1;
+		stbuf->st_size = 12;
 		return 0;
+
+	case MP3_FILE:
+		status = mp3_file_data_for_path(path, &fd);
+		if (status != 0)
+			return (status);
+
+		if (!fd.found)
+			return (-ENOENT);
+		if (fd.fd < 0)
+			return (-EIO);
+
+		if (fstat(fd.fd, stbuf) == 0)
+			return (0);
+		else
+			return (-ENOENT);
+
+	case MP3_NOTFOUND:
+	default:
+		return -ENOENT;
 	}
-	return -ENOENT;
 }
 
 
