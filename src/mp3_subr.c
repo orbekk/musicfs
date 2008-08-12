@@ -1,3 +1,4 @@
+/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
 /* Miscellaneous subroutines for mp3fs. */
 #define FUSE_USE_VERSION 26
 #include <stdio.h>
@@ -331,6 +332,90 @@ mp3_lookup_finish(struct lookuphandle *lh)
 	sqlite3_finalize(lh->st);
 	sqlite3_close(lh->handle);
 	free(lh);
+}
+
+/*
+ * Build a file_data struct for a path.
+ *
+ * data should be a pointer to a file handle
+ * returns 0 on success
+ */
+int
+mp3_file_data_for_path(const char *path, void *data) {
+	struct file_data *fd;
+	fd = (struct file_data *)data;
+	struct lookuphandle *lh;
+	char *artist, *album, *title;
+
+	lh = NULL;
+	fd->fd = -1;
+	fd->found = 0;
+
+	/* Open a specific track. */
+	if (strncmp(path, "/Tracks", 7) == 0) {
+		switch (mp3_numtoken(path)) {
+		case 2:
+			title = mp3_gettoken(path, 2);
+			if (title == NULL)
+				break;
+			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
+			    "SELECT filepath FROM song WHERE title LIKE ?");
+			if (lh == NULL)
+				return (-EIO);
+			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			break;
+		default:
+			return (-ENOENT);
+		}
+	} else if (strncmp(path, "/Albums", 7) == 0) {
+		switch (mp3_numtoken(path)) {
+		case 3:
+			album = mp3_gettoken(path, 2);
+			if (album == NULL)
+				break;
+			title = mp3_gettoken(path, 3);
+			if (title == NULL)
+				break;
+			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
+			    "SELECT filepath FROM song WHERE title LIKE ? AND "
+			    "album LIKE ?");
+			if (lh == NULL)
+				return (-EIO);
+			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+			break;
+		default:
+			return (-ENOENT);
+		}
+	} else if (strncmp(path, "/Artists", 8) == 0) {
+		switch (mp3_numtoken(path)) {
+		case 4:
+			artist = mp3_gettoken(path, 2);
+			album  = mp3_gettoken(path, 3);
+			title  = mp3_gettoken(path, 4);
+			DEBUG("artist(%s) album(%s) title(%s)\n", artist, album, title);
+			if (!(artist && album && title)) {
+				break;
+			}
+			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
+			    "SELECT filepath FROM song WHERE artistname LIKE ? AND "
+			    "album LIKE ? AND title LIKE ?");
+			if (lh == NULL)
+			    return (-EIO);
+			mp3_lookup_insert(lh, artist, LIST_DATATYPE_STRING);
+			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			break;
+		default:
+			return (-ENOENT);
+		}
+	}
+
+	if (lh) {
+		mp3_lookup_finish(lh);
+	}
+
+	return 0;
 }
 
 /*
