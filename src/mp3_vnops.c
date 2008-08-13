@@ -97,7 +97,7 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 		return (0);
 	} else if (strcmp(path, "/Tracks") == 0) {
 		lh = mp3_lookup_start(0, &fd, mp3_lookup_list,
-		    "SELECT DISTINCT title FROM song");
+		    "SELECT DISTINCT title || '.' || extension FROM song");
 		mp3_lookup_finish(lh);
 		return (0);
 	} else if (strncmp(path, "/Albums", 7) == 0) {
