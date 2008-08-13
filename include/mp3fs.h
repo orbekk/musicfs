@@ -2,7 +2,7 @@
 #define _MP3FS_H_
 struct fuse_args;
 
-#define DBNAME "/home/lulf/dev/mp3fs/music.db"
+#define DBNAME "music.db"
 
 int	mp3_run(int, char **);
 int	mp3_initscan(char *);
