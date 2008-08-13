@@ -379,7 +379,7 @@ mp3_file_data_for_path(const char *path, void *data) {
 				break;
 			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
 			    "SELECT filepath FROM song "
-			    "WHERE (title||'.'||extension) LIKE ?");
+			    "WHERE (artistname||' - '||title||'.'||extension) LIKE ?");
 			if (lh == NULL)
 				return (-EIO);
 			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
