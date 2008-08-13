@@ -358,17 +358,13 @@ mp3_lookup_finish(struct lookuphandle *lh)
  *
  * data should be a pointer to a file handle
  * returns 0 on success
- *
- * Use this function to get a file handle for a *file*, not a
- * directory. Example: /Tracks/foo is a file, but not
- * /Artist/some_album
  */
 int
 mp3_file_data_for_path(const char *path, void *data) {
 	struct file_data *fd;
 	fd = (struct file_data *)data;
 	struct lookuphandle *lh;
-	char *artist, *album, *title_, *title;
+	char *artist, *album, *title;
 
 	lh = NULL;
 	fd->fd = -1;
@@ -378,11 +374,9 @@ mp3_file_data_for_path(const char *path, void *data) {
 	if (strncmp(path, "/Tracks", 7) == 0) {
 		switch (mp3_numtoken(path)) {
 		case 2:
-			title_ = mp3_gettoken(path, 2);
-			if (title_ == NULL) break;
-			title = mp3_basename(title_);
-			if (title == NULL) break;
-
+			title = mp3_gettoken(path, 2);
+			if (title == NULL)
+				break;
 			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
 			    "SELECT filepath FROM song WHERE title LIKE ?");
 			if (lh == NULL)
@@ -396,12 +390,11 @@ mp3_file_data_for_path(const char *path, void *data) {
 		switch (mp3_numtoken(path)) {
 		case 3:
 			album = mp3_gettoken(path, 2);
-			if (album == NULL) break;
-			title_ = mp3_gettoken(path, 2);
-			if (title_ == NULL) break;
-			title = mp3_basename(title_);
-			if (title == NULL) break;
-
+			if (album == NULL)
+				break;
+			title = mp3_gettoken(path, 3);
+			if (title == NULL)
+				break;
 			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
 			    "SELECT filepath FROM song WHERE title LIKE ? AND "
 			    "album LIKE ?");
@@ -416,15 +409,13 @@ mp3_file_data_for_path(const char *path, void *data) {
 	} else if (strncmp(path, "/Artists", 8) == 0) {
 		switch (mp3_numtoken(path)) {
 		case 4:
-			artist  = mp3_gettoken(path, 2);
-			if (artist == NULL) break;
-			album   = mp3_gettoken(path, 3);
-			if (album == NULL) break;
-			title_  = mp3_gettoken(path, 4);
-			if (title_ == NULL) break;
-			title   = mp3_basename(title_);
-			if (title == NULL) break;
-
+			artist = mp3_gettoken(path, 2);
+			album  = mp3_gettoken(path, 3);
+			title  = mp3_gettoken(path, 4);
+			DEBUG("artist(%s) album(%s) title(%s)\n", artist, album, title);
+			if (!(artist && album && title)) {
+				break;
+			}
 			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
 			    "SELECT filepath FROM song WHERE artistname LIKE ? AND "
 			    "album LIKE ? AND title LIKE ?");
@@ -518,36 +509,6 @@ mp3_gettoken(const char *str, int toknum)
 }
 
 /*
- * Get the basename of a string. (everything before the last ".", or
- * the entire string of no "." is found)
- */
-char *
-mp3_basename(const char *str)
-{
-	if (!str)
-		return (NULL);
-
-	char *res = malloc(sizeof(char) * (strlen(str) + 1));
-	char *stop = strrchr(str, (int)'.');
-	char *p;
-	const char *q;
-
-	if (stop) {
-		p = res;
-		q = str;
-		while (q != stop) {
-			*p = *q;
-			p++; q++;
-		}
-		*p = '\0';
-	} else {
-		strcpy(res, str);
-	}
-
-	return (res);
-}
-
-/*
  * List album given a path.
  */
 void
@@ -608,7 +569,7 @@ mp3_lookup_artist(const char *path, struct filler_data *fd)
 		if (album == NULL)
 			break;
 		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
-		    "SELECT title || '.' || extension FROM song, artist "
+		    "SELECT title FROM song, artist "
 		    "WHERE song.artistname = artist.name AND artist.name "
 		    "LIKE ? AND song.album LIKE ?");
 		mp3_lookup_insert(lh, name, LIST_DATATYPE_STRING);

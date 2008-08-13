@@ -57,7 +57,6 @@ void	 mp3_lookup_genre(const char *, struct filler_data *);
 void	 mp3_lookup_album(const char *, struct filler_data *);
 char	*mp3_gettoken(const char *, int);
 int	 mp3_numtoken(const char *);
-char    *mp3_basename(const char *);
 int      mp3_file_data_for_path(const char *, void *);
 
 enum mp3_filetype mp3_get_filetype(const char *);
