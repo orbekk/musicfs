@@ -434,7 +434,8 @@ mp3_file_data_for_path(const char *path, void *data) {
 			}
 			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
 			    "SELECT filepath FROM song WHERE artistname LIKE ? AND "
-			    "album LIKE ? AND (title||'.'||extension) LIKE ?");
+			    "album LIKE ? AND "
+			    "(LTRIM(track||' ')||title||'.'||extension) LIKE ?");
 			if (lh == NULL)
 			    return (-EIO);
 			mp3_lookup_insert(lh, artist, LIST_DATATYPE_STRING);
@@ -586,7 +587,8 @@ mp3_lookup_artist(const char *path, struct filler_data *fd)
 		if (album == NULL)
 			break;
 		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
-		    "SELECT title ||'.'|| extension FROM song, artist "
+		    "SELECT LTRIM(track||' ')||title||'.'||extension "
+		    "FROM song, artist "
 		    "WHERE song.artistname = artist.name AND artist.name "
 		    "LIKE ? AND song.album LIKE ?");
 		mp3_lookup_insert(lh, name, LIST_DATATYPE_STRING);
