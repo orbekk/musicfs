@@ -509,6 +509,36 @@ mp3_gettoken(const char *str, int toknum)
 }
 
 /*
+ * Get the basename of a string. (everything before the last ".", or
+ * the entire string of no "." is found)
+ */
+char *
+mp3_basename(const char *str)
+{
+	if (!str)
+		return (NULL);
+
+	char *res = malloc(sizeof(char) * (strlen(str) + 1));
+	char *stop = strrchr(str, (int)'.');
+	char *p;
+	const char *q;
+
+	if (stop) {
+		p = res;
+		q = str;
+		while (q != stop) {
+			*p = *q;
+			p++; q++;
+		}
+		*p = '\0';
+	} else {
+		strcpy(res, str);
+	}
+
+	return (res);
+}
+
+/*
  * List album given a path.
  */
 void
