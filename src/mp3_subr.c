@@ -92,10 +92,10 @@ mp3_scan(char *filepath)
 {
 	TagLib_File *file;
 	TagLib_Tag *tag;
-	char *artist, *album, *genre, *title;
+	char *artist, *album, *genre, *title, *trackno;
 	const char *extension;
 	int ret;
-	unsigned int year;
+	unsigned int track, year;
 	sqlite3_stmt *st;
 	struct stat fstat;
 	
@@ -194,6 +194,7 @@ mp3_scan(char *filepath)
 	do {
 		title = taglib_tag_title(tag);
 		album = taglib_tag_album(tag);
+		track = taglib_tag_track(tag);
 		year = taglib_tag_year(tag);
 		extension = strrchr(filepath, (int)'.');
 		if (extension == NULL)
@@ -208,7 +209,8 @@ mp3_scan(char *filepath)
 
 		/* First find out if it exists. */
 		ret = sqlite3_prepare_v2(handle, "SELECT * FROM song, artist "
-		    " WHERE artist.name=song.artistname AND title=? AND year=?",
+		    " WHERE artist.name=song.artistname AND title=? AND year=?"
+		    " AND song.album=?",
 		    -1, &st, NULL);
 		if (ret != SQLITE_OK) {
 			warnx("Error preparing statement: %s\n",
@@ -217,6 +219,7 @@ mp3_scan(char *filepath)
 		}
 		sqlite3_bind_text(st, 1, title, -1, SQLITE_STATIC);
 		sqlite3_bind_int(st, 2, year);
+		sqlite3_bind_text(st, 3, album, -1, SQLITE_STATIC);
 		ret = sqlite3_step(st);
 		sqlite3_finalize(st);
 		if (ret == SQLITE_ROW)
@@ -227,8 +230,8 @@ mp3_scan(char *filepath)
 			break;
 		/* Now, finally insert it. */
 		ret = sqlite3_prepare_v2(handle, "INSERT INTO song(title, "
-		    "artistname, album, genrename, year, filepath, mtime, "
-		    "extension) VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
+		    "artistname, album, genrename, year, track, filepath, "
+		    "mtime, extension) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		    -1, &st, NULL);
 		if (ret != SQLITE_OK) {
 			warnx("Error preparing insert statement: %s\n",
@@ -240,9 +243,16 @@ mp3_scan(char *filepath)
 		sqlite3_bind_text(st, 3, album, -1, SQLITE_STATIC);
 		sqlite3_bind_text(st, 4, genre, -1, SQLITE_STATIC);
 		sqlite3_bind_int(st, 5, year);
-		sqlite3_bind_text(st, 6, filepath, -1, SQLITE_STATIC);
-		sqlite3_bind_int(st, 7, fstat.st_mtime);
-		sqlite3_bind_text(st, 8, extension, -1, SQLITE_STATIC);
+
+		trackno = malloc(sizeof(char) * 9);
+		sprintf(trackno, "%02d", track);
+		DEBUG("trackno: '%s'\n", trackno);
+		sqlite3_bind_text(st, 6, trackno, -1, SQLITE_STATIC);
+		/* free(trackno); */
+
+		sqlite3_bind_text(st, 7, filepath, -1, SQLITE_STATIC);
+		sqlite3_bind_int(st, 8, fstat.st_mtime);
+		sqlite3_bind_text(st, 9, extension, -1, SQLITE_STATIC);
 		ret = sqlite3_step(st);
 		sqlite3_finalize(st);
 		if (ret != SQLITE_DONE) {
@@ -361,6 +371,7 @@ mp3_lookup_finish(struct lookuphandle *lh)
  */
 int
 mp3_file_data_for_path(const char *path, void *data) {
+	DEBUG("getting file data for %s\n", path);
 	struct file_data *fd;
 	fd = (struct file_data *)data;
 	struct lookuphandle *lh;
