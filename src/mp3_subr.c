@@ -244,11 +244,14 @@ mp3_scan(char *filepath)
 		sqlite3_bind_text(st, 4, genre, -1, SQLITE_STATIC);
 		sqlite3_bind_int(st, 5, year);
 
-		trackno = malloc(sizeof(char) * 9);
-		sprintf(trackno, "%02d", track);
-		DEBUG("trackno: '%s'\n", trackno);
-		sqlite3_bind_text(st, 6, trackno, -1, SQLITE_STATIC);
-		/* free(trackno); */
+		if (track) {
+			trackno = malloc(sizeof(char) * 9);
+			sprintf(trackno, "%02d", track);
+			sqlite3_bind_text(st, 6, trackno, -1, SQLITE_TRANSIENT);
+			free(trackno);
+		} else {
+			sqlite3_bind_text(st, 6, "", -1, SQLITE_STATIC);
+		}
 
 		sqlite3_bind_text(st, 7, filepath, -1, SQLITE_STATIC);
 		sqlite3_bind_int(st, 8, fstat.st_mtime);
