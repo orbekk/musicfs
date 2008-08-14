@@ -324,19 +324,50 @@ mfs_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 }
 
 /*
+ * Returns a new string, which is a copy of str, except that all "\'"s
+ * are replaced with "'". (Needed for fetching rows containing ' in
+ * the sqlite, since we are passed "\'" from FUSE)
+ */
+char *
+mfs_escape_sqlstring(const char *str)
+{
+	char *p, *escaped;
+	const char *q;
+
+	int len = strlen(str) + 1;
+	escaped = malloc(sizeof(char) * len);
+
+	p = escaped;
+	q = str;
+
+	while (*q != '\0') {
+		if (*q == '\\' && q[1] == '\'') {
+			q++;
+		}
+		*p = *q;
+		p++; q++;
+	}
+	*p = '\0';
+
+	return escaped;
+}
+
+/*
  * Insert data that should be searched for in the list. The data is assumed to
  * be dynamically allocated, and will be free'd when mfs_lookup_finish is called!
  */
 void
 mfs_lookup_insert(struct lookuphandle *lh, void *data, int type)
 {
-	char *str;
+	char *str, *escaped;
 	int val;
 
 	switch (type) {
 	case LIST_DATATYPE_STRING:
 		str = (char *)data;
-		sqlite3_bind_text(lh->st, lh->count++, str, -1, free);
+		escaped = mfs_escape_sqlstring(str);
+		free(str);
+		sqlite3_bind_text(lh->st, lh->count++, escaped, -1, free);
 		break;
 	case LIST_DATATYPE_INT:
 		val = *((int *)data);
