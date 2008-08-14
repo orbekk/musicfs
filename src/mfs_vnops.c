@@ -41,7 +41,7 @@
 char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/musicfs/music";
 char *logpath = "/home/lulf/dev/musicfs/musicfs.log";
 
-/* Information when reading /paths */
+/* Information when reading /.config */
 const char* paths_info =
 "# This is the paths I've registered for your music collection.\n"
 "# Add additional paths on their own line in this file, and I'll\n"
@@ -62,7 +62,7 @@ static int mfs_getattr (const char *path, struct stat *stbuf)
 		return 0;
 	}
 
-	if (strcmp(path, "/paths") == 0) {
+	if (strcmp(path, "/.config") == 0) {
 		stbuf->st_mode = S_IFREG | 0744;
 		stbuf->st_nlink = 2;
 		stbuf->st_size = strlen(paths_info);
@@ -115,7 +115,7 @@ static int mfs_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 		filler(buf, "Genres", NULL, 0);
 		filler(buf, "Tracks", NULL, 0);
 		filler(buf, "Albums", NULL, 0);
-		filler(buf, "paths", NULL, 0);
+		filler(buf, ".config", NULL, 0);
 		return (0);
 	}
 
@@ -150,7 +150,7 @@ static int mfs_open (const char *path, struct fuse_file_info *fi)
 	fd.fd = -1;
 	fd.found = 0;
 
-	if (strcmp(path, "/paths") == 0)
+	if (strcmp(path, "/.config") == 0)
 		return (0);
 
 	int status = mfs_file_data_for_path(path, &fd);
@@ -184,7 +184,7 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 	int len;
 	size_t bytes;
 
-	if (strcmp(path, "/paths") == 0) {
+	if (strcmp(path, "/.config") == 0) {
 		DEBUG("read from paths, offset(%d), size(%d)\n", offset, size);
 		len = strlen(paths_info);
 		if (size > (len - offset))
