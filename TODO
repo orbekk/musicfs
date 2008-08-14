@@ -7,8 +7,3 @@ TODO for the nearest future:
 - When calling open, buffer the file descriptors, so we don't open them each
   time, and just read from the filedescriptor. We could behave more fs-like by
   having lists of active nodes as an analogue to inodes in a typical filesystem.
-- Make some way for the lookup functions to see more than just one
-  field from the SQL row (eg. we need to create paths like "artist - song")
-  - Is this really needed? We have come a long way with using SQL tricks only.
-- Escaping string: when querying sqlite, replace ' with '' in ingoing
-  strings. (why isn't this done in the API?)
