@@ -1,1 +1,2 @@
-Mp3fs, a file system for browsing ID3 tags.
+MusicFS, a filesystem for browsing and using your music collection by using the
+tags embedded in the music files.
