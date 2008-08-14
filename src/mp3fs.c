@@ -5,16 +5,16 @@
 #include <stdio.h>
 #include <fuse.h>
 #include <fuse_opt.h>
-#include <mp3fs.h>
+#include <musicfs.h>
 
 /* Prototypes. */
-static int mp3fs_opt_proc (void *, const char *, int, struct fuse_args *);
+static int musicfs_opt_proc (void *, const char *, int, struct fuse_args *);
 
 int
 main(int argc, char **argv)
 {
-	printf("Starting up mp3fs\n");
-	mp3_run(argc, argv);
-	printf("Shutting down mp3fs\n");
+	printf("Starting up musicfs\n");
+	mfs_run(argc, argv);
+	printf("Shutting down musicfs\n");
 }
 

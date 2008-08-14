@@ -1,5 +1,5 @@
 /* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
-/* Miscellaneous subroutines for mp3fs. */
+/* Miscellaneous subroutines for musicfs. */
 #define FUSE_USE_VERSION 26
 #include <stdio.h>
 #include <errno.h>
@@ -13,7 +13,7 @@
 #include <fuse.h>
 
 #include <tag_c.h>
-#include <mp3fs.h>
+#include <musicfs.h>
 #include <sqlite3.h>
 #include <debug.h>
 
@@ -30,7 +30,7 @@ struct lookuphandle {
 sqlite3 *handle;
 
 int
-mp3_initscan(char *musicpath)
+mfs_initscan(char *musicpath)
 {
 	int error;
 
@@ -41,7 +41,7 @@ mp3_initscan(char *musicpath)
 		sqlite3_close(handle);
 		return (-1);
 	}
-	traverse_hierarchy(musicpath, mp3_scan);
+	traverse_hierarchy(musicpath, mfs_scan);
 	sqlite3_close(handle);
 	return (0);
 }
@@ -88,7 +88,7 @@ traverse_hierarchy(char *dirpath, traverse_fn_t fileop)
 
 /* Scan the music initially. */
 void
-mp3_scan(char *filepath)
+mfs_scan(char *filepath)
 {
 	TagLib_File *file;
 	TagLib_Tag *tag;
@@ -273,7 +273,7 @@ mp3_scan(char *filepath)
  * resources and return the handle.
  */
 struct lookuphandle *
-mp3_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
+mfs_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 {
 	struct lookuphandle *lh;
 	int ret, error;
@@ -304,10 +304,10 @@ mp3_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 
 /*
  * Insert data that should be searched for in the list. The data is assumed to
- * be dynamically allocated, and will be free'd when mp3_lookup_finish is called!
+ * be dynamically allocated, and will be free'd when mfs_lookup_finish is called!
  */
 void
-mp3_lookup_insert(struct lookuphandle *lh, void *data, int type)
+mfs_lookup_insert(struct lookuphandle *lh, void *data, int type)
 {
 	char *str;
 	int val;
@@ -329,7 +329,7 @@ mp3_lookup_insert(struct lookuphandle *lh, void *data, int type)
  * returned data. Free the handle when done.
  */
 void
-mp3_lookup_finish(struct lookuphandle *lh)
+mfs_lookup_finish(struct lookuphandle *lh)
 {
 	char buf[1024];
 	const unsigned char *value;
@@ -373,7 +373,7 @@ mp3_lookup_finish(struct lookuphandle *lh)
  * returns 0 on success
  */
 int
-mp3_file_data_for_path(const char *path, void *data) {
+mfs_file_data_for_path(const char *path, void *data) {
 	DEBUG("getting file data for %s\n", path);
 	struct file_data *fd;
 	fd = (struct file_data *)data;
@@ -386,61 +386,61 @@ mp3_file_data_for_path(const char *path, void *data) {
 
 	/* Open a specific track. */
 	if (strncmp(path, "/Tracks", 7) == 0) {
-		switch (mp3_numtoken(path)) {
+		switch (mfs_numtoken(path)) {
 		case 2:
-			title = mp3_gettoken(path, 2);
+			title = mfs_gettoken(path, 2);
 			if (title == NULL)
 				break;
-			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
+			lh = mfs_lookup_start(0, fd, mfs_lookup_open,
 			    "SELECT filepath FROM song "
 			    "WHERE (artistname||' - '||title||'.'||extension) LIKE ?");
 			if (lh == NULL)
 				return (-EIO);
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			mfs_lookup_insert(lh, title, LIST_DATATYPE_STRING);
 			break;
 		default:
 			return (-ENOENT);
 		}
 	} else if (strncmp(path, "/Albums", 7) == 0) {
-		switch (mp3_numtoken(path)) {
+		switch (mfs_numtoken(path)) {
 		case 3:
-			album = mp3_gettoken(path, 2);
+			album = mfs_gettoken(path, 2);
 			if (album == NULL)
 				break;
-			title = mp3_gettoken(path, 3);
+			title = mfs_gettoken(path, 3);
 			if (title == NULL)
 				break;
-			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
+			lh = mfs_lookup_start(0, fd, mfs_lookup_open,
 			    "SELECT filepath FROM song "
 			    "WHERE (title||'.'||extension) LIKE ? AND "
 			    "album LIKE ?");
 			if (lh == NULL)
 				return (-EIO);
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
-			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+			mfs_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 			break;
 		default:
 			return (-ENOENT);
 		}
 	} else if (strncmp(path, "/Artists", 8) == 0) {
-		switch (mp3_numtoken(path)) {
+		switch (mfs_numtoken(path)) {
 		case 4:
-			artist = mp3_gettoken(path, 2);
-			album  = mp3_gettoken(path, 3);
-			title  = mp3_gettoken(path, 4);
+			artist = mfs_gettoken(path, 2);
+			album  = mfs_gettoken(path, 3);
+			title  = mfs_gettoken(path, 4);
 			DEBUG("artist(%s) album(%s) title(%s)\n", artist, album, title);
 			if (!(artist && album && title)) {
 				break;
 			}
-			lh = mp3_lookup_start(0, fd, mp3_lookup_open,
+			lh = mfs_lookup_start(0, fd, mfs_lookup_open,
 			    "SELECT filepath FROM song WHERE artistname LIKE ? AND "
 			    "album LIKE ? AND "
 			    "(LTRIM(track||' ')||title||'.'||extension) LIKE ?");
 			if (lh == NULL)
 			    return (-EIO);
-			mp3_lookup_insert(lh, artist, LIST_DATATYPE_STRING);
-			mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
-			mp3_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			mfs_lookup_insert(lh, artist, LIST_DATATYPE_STRING);
+			mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+			mfs_lookup_insert(lh, title, LIST_DATATYPE_STRING);
 			break;
 		default:
 			return (-ENOENT);
@@ -448,7 +448,7 @@ mp3_file_data_for_path(const char *path, void *data) {
 	}
 
 	if (lh) {
-		mp3_lookup_finish(lh);
+		mfs_lookup_finish(lh);
 	}
 
 	return 0;
@@ -459,7 +459,7 @@ mp3_file_data_for_path(const char *path, void *data) {
  * XXX: should we strip the first and last?
  */
 int
-mp3_numtoken(const char *str)
+mfs_numtoken(const char *str)
 {
 	const char *ptr;
 	int num;
@@ -481,7 +481,7 @@ mp3_numtoken(const char *str)
  * Extract token number toknum and return it in escaped form.
  */
 char *
-mp3_gettoken(const char *str, int toknum)
+mfs_gettoken(const char *str, int toknum)
 {
 	const char *ptr, *start, *end;
 	char *ret, *dest;
@@ -529,122 +529,122 @@ mp3_gettoken(const char *str, int toknum)
  * List album given a path.
  */
 void
-mp3_lookup_album(const char *path, struct filler_data *fd)
+mfs_lookup_album(const char *path, struct filler_data *fd)
 {
 	struct lookuphandle *lh;
 	char *album;
 
-	switch (mp3_numtoken(path)) {
+	switch (mfs_numtoken(path)) {
 	case 1:
-		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		lh = mfs_lookup_start(0, fd, mfs_lookup_list,
 		    "SELECT DISTINCT album FROM song");
 		break;
 	case 2:
 		/* So, now we got to find out the artist and list its albums. */
-		album = mp3_gettoken(path, 2);
+		album = mfs_gettoken(path, 2);
 		if (album == NULL)
 			break;
-		lh  = mp3_lookup_start(0, fd, mp3_lookup_list,
+		lh  = mfs_lookup_start(0, fd, mfs_lookup_list,
 		    "SELECT DISTINCT title||'.'||extension FROM song "
 		    "WHERE album LIKE ?");
-		mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+		mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
 	}
-	mp3_lookup_finish(lh);
+	mfs_lookup_finish(lh);
 }
 
 /*
  * List artist given a path.
  */
 void
-mp3_lookup_artist(const char *path, struct filler_data *fd)
+mfs_lookup_artist(const char *path, struct filler_data *fd)
 {
 	struct lookuphandle *lh;
 	char *name, *album;
 
-	switch (mp3_numtoken(path)) {
+	switch (mfs_numtoken(path)) {
 	case 1:
-		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		lh = mfs_lookup_start(0, fd, mfs_lookup_list,
 		    "SELECT name FROM artist");
 		break;
 	case 2:
 		/* So, now we got to find out the artist and list its albums. */
-		name = mp3_gettoken(path, 2);
+		name = mfs_gettoken(path, 2);
 		if (name == NULL)
 			break;
-		lh  = mp3_lookup_start(0, fd, mp3_lookup_list,
+		lh  = mfs_lookup_start(0, fd, mfs_lookup_list,
 		    "SELECT DISTINCT album FROM song, "
 		    "artist WHERE song.artistname = artist.name AND artist.name"
 		    " LIKE ?");
-		mp3_lookup_insert(lh, name, LIST_DATATYPE_STRING);
+		mfs_lookup_insert(lh, name, LIST_DATATYPE_STRING);
 		break;
 	case 3:
 		/* List songs in an album. */
-		name = mp3_gettoken(path, 2);
+		name = mfs_gettoken(path, 2);
 		if (name == NULL)
 			break;
-		album = mp3_gettoken(path, 3);
+		album = mfs_gettoken(path, 3);
 		if (album == NULL)
 			break;
-		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		lh = mfs_lookup_start(0, fd, mfs_lookup_list,
 		    "SELECT LTRIM(track||' ')||title||'.'||extension "
 		    "FROM song, artist "
 		    "WHERE song.artistname = artist.name AND artist.name "
 		    "LIKE ? AND song.album LIKE ?");
-		mp3_lookup_insert(lh, name, LIST_DATATYPE_STRING);
-		mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+		mfs_lookup_insert(lh, name, LIST_DATATYPE_STRING);
+		mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
 	}
-	mp3_lookup_finish(lh);
+	mfs_lookup_finish(lh);
 }
 
 /*
  * Looks up tracks given a genre, or all genres.
  */
 void
-mp3_lookup_genre(const char *path, struct filler_data *fd)
+mfs_lookup_genre(const char *path, struct filler_data *fd)
 {
 	struct lookuphandle *lh;
 	char *genre, *album;
 
-	switch (mp3_numtoken(path)) {
+	switch (mfs_numtoken(path)) {
 	case 1:
-		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		lh = mfs_lookup_start(0, fd, mfs_lookup_list,
 		    "SELECT name FROM genre");
 		break;
 	case 2:
-		genre = mp3_gettoken(path, 2);
+		genre = mfs_gettoken(path, 2);
 		if (genre == NULL)
 			break;
-		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		lh = mfs_lookup_start(0, fd, mfs_lookup_list,
 		    "SELECT DISTINCT album FROM song, "
 		    "genre WHERE song.genrename = genre.name AND genre.name "
 		    "LIKE ?");
-		mp3_lookup_insert(lh, genre, LIST_DATATYPE_STRING);
+		mfs_lookup_insert(lh, genre, LIST_DATATYPE_STRING);
 		break;
 	case 3:
-		genre = mp3_gettoken(path, 2);
+		genre = mfs_gettoken(path, 2);
 		if (genre == NULL)
 			break;
-		album = mp3_gettoken(path, 3);
+		album = mfs_gettoken(path, 3);
 		if (album == NULL)
 			break;
-		lh = mp3_lookup_start(0, fd, mp3_lookup_list,
+		lh = mfs_lookup_start(0, fd, mfs_lookup_list,
 		    "SELECT title||'.'||extension FROM song, genre WHERE"
 		    " song.genrename = genre.name AND genre.name LIKE ? "
 		    " AND song.album LIKE ?");
-		mp3_lookup_insert(lh, genre, LIST_DATATYPE_STRING);
-		mp3_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+		mfs_lookup_insert(lh, genre, LIST_DATATYPE_STRING);
+		mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
 	}
-	mp3_lookup_finish(lh);
+	mfs_lookup_finish(lh);
 }
 
 /*
  * Lookup function for filling given data into a filler.
  */
 int
-mp3_lookup_list(void *data, const char *str)
+mfs_lookup_list(void *data, const char *str)
 {
 	struct filler_data *fd;
 
@@ -657,7 +657,7 @@ mp3_lookup_list(void *data, const char *str)
  * Lookup a file and open it if found.
  */
 int
-mp3_lookup_open(void *data, const char *str)
+mfs_lookup_open(void *data, const char *str)
 {
 	struct file_data *fd;
 
@@ -672,7 +672,7 @@ mp3_lookup_open(void *data, const char *str)
  * XXX: watch out for duplicates, we might stat more than once.
  */
 int
-mp3_lookup_stat(void *data, const char *str)
+mfs_lookup_stat(void *data, const char *str)
 {
 	struct stat *st;
 
@@ -692,12 +692,12 @@ mp3_lookup_stat(void *data, const char *str)
  *
  * - /Tracks/Whatever should be a file, since Whatever is a song
  *
- * Note: This should only be used for paths inside the mp3fs
+ * Note: This should only be used for paths inside the musicfs
  * directories (Artists, Tracks, ...)
  */
-enum mp3_filetype
-mp3_get_filetype(const char *path) {
-	int tokens = mp3_numtoken(path);
+enum mfs_filetype
+mfs_get_filetype(const char *path) {
+	int tokens = mfs_numtoken(path);
 
 	if (strncmp(path, "/Genres", 7) == 0 ||
 	    strncmp(path, "/Artists", 8) == 0) {
@@ -705,32 +705,32 @@ mp3_get_filetype(const char *path) {
 		case 1:
 		case 2:
 		case 3:
-			return (MP3_DIRECTORY);
+			return (MFS_DIRECTORY);
 		case 4:
-			return (MP3_FILE);
+			return (MFS_FILE);
 		default:
-			return (MP3_NOTFOUND);
+			return (MFS_NOTFOUND);
 		}
 	} else if (strncmp(path, "/Albums", 7) == 0) {
 		switch (tokens) {
 		case 1:
 		case 2:
-			return (MP3_DIRECTORY);
+			return (MFS_DIRECTORY);
 		case 3:
-			return (MP3_FILE);
+			return (MFS_FILE);
 		default:
-			return (MP3_NOTFOUND);
+			return (MFS_NOTFOUND);
 		}
 	} else if (strncmp(path, "/Tracks", 7) == 0) {
 		switch (tokens) {
 		case 1:
-			return (MP3_DIRECTORY);
+			return (MFS_DIRECTORY);
 		case 2:
-			return (MP3_FILE);
+			return (MFS_FILE);
 		default:
-			return (MP3_NOTFOUND);
+			return (MFS_NOTFOUND);
 		}
 	} else {
-		return (MP3_NOTFOUND);
+		return (MFS_NOTFOUND);
 	}
 }

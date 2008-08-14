@@ -8,7 +8,7 @@ CC = gcc
 C_FILES = $(wildcard src/*.c)
 OBJS    = $(C_FILES:.c=.o) \
 
-PROGRAM = mp3fs
+PROGRAM = musicfs
 
 all: $(PROGRAM)
 

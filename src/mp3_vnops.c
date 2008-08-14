@@ -14,13 +14,13 @@
 #include <unistd.h>
 
 #include <tag_c.h>
-#include <mp3fs.h>
+#include <musicfs.h>
 #include <debug.h>
 
-char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/mp3fs/music";
-char *logpath = "/home/lulf/dev/mp3fs/mp3fs.log";
+char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/musicfs/music";
+char *logpath = "/home/lulf/dev/musicfs/musicfs.log";
 
-static int mp3_getattr (const char *path, struct stat *stbuf)
+static int mfs_getattr (const char *path, struct stat *stbuf)
 {
 	struct file_data fd;
 	fd.fd = -1;
@@ -35,16 +35,16 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 		return 0;
 	}
 
-	enum mp3_filetype type = mp3_get_filetype(path);
+	enum mfs_filetype type = mfs_get_filetype(path);
 	switch (type) {
-	case MP3_DIRECTORY:
+	case MFS_DIRECTORY:
 		stbuf->st_mode = S_IFDIR | 0444;
 		stbuf->st_nlink = 1;
 		stbuf->st_size = 12;
 		return 0;
 
-	case MP3_FILE:
-		status = mp3_file_data_for_path(path, &fd);
+	case MFS_FILE:
+		status = mfs_file_data_for_path(path, &fd);
 		if (status != 0)
 			return (status);
 
@@ -58,14 +58,14 @@ static int mp3_getattr (const char *path, struct stat *stbuf)
 		else
 			return (-ENOENT);
 
-	case MP3_NOTFOUND:
+	case MFS_NOTFOUND:
 	default:
 		return -ENOENT;
 	}
 }
 
 
-static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
+static int mfs_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 						off_t offset, struct fuse_file_info *fi)
 {
 	struct filler_data fd;
@@ -90,32 +90,32 @@ static int mp3_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 	 * 3. Return the list of those mp3s.
 	 */
 	if (strncmp(path, "/Artists", 8) == 0) {
-		mp3_lookup_artist(path, &fd);
+		mfs_lookup_artist(path, &fd);
 		return (0);
 	} else if (strncmp(path, "/Genres", 7) == 0) {
-		mp3_lookup_genre(path, &fd);
+		mfs_lookup_genre(path, &fd);
 		return (0);
 	} else if (strcmp(path, "/Tracks") == 0) {
-		lh = mp3_lookup_start(0, &fd, mp3_lookup_list,
+		lh = mfs_lookup_start(0, &fd, mfs_lookup_list,
 		    "SELECT DISTINCT artistname||' - '||title||'.'||extension "
 		    "FROM song");
-		mp3_lookup_finish(lh);
+		mfs_lookup_finish(lh);
 		return (0);
 	} else if (strncmp(path, "/Albums", 7) == 0) {
-		mp3_lookup_album(path, &fd);
+		mfs_lookup_album(path, &fd);
 		return (0);
 	}
 
 	return (-ENOENT);
 }
 
-static int mp3_open (const char *path, struct fuse_file_info *fi)
+static int mfs_open (const char *path, struct fuse_file_info *fi)
 {
 	struct file_data fd;
 	fd.fd = -1;
 	fd.found = 0;
 
-	int status = mp3_file_data_for_path(path, &fd);
+	int status = mfs_file_data_for_path(path, &fd);
 	if (status != 0)
 		return (status);
 
@@ -137,7 +137,7 @@ static int mp3_open (const char *path, struct fuse_file_info *fi)
 	 */
 }
 
-static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
+static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 					 struct fuse_file_info *fi)
 {
 	struct file_data fd;
@@ -145,7 +145,7 @@ static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
 	fd.found = 0;
 	size_t bytes;
 
-	int status = mp3_file_data_for_path(path, &fd);
+	int status = mfs_file_data_for_path(path, &fd);
 	if (status != 0)
 		return (status);
 
@@ -165,14 +165,14 @@ static int mp3_read (const char *path, char *buf, size_t size, off_t offset,
 	 */
 }
 
-static struct fuse_operations mp3_ops = {
-	.getattr	= mp3_getattr,
-	.readdir	= mp3_readdir,
-	.open		= mp3_open,
-	.read		= mp3_read,
+static struct fuse_operations mfs_ops = {
+	.getattr	= mfs_getattr,
+	.readdir	= mfs_readdir,
+	.open		= mfs_open,
+	.read		= mfs_read,
 };
 
-static int mp3fs_opt_proc (void *data, const char *arg, int key,
+static int musicfs_opt_proc (void *data, const char *arg, int key,
 						   struct fuse_args *outargs)
 {
 	static int musicpath_set = 0;
@@ -187,7 +187,7 @@ static int mp3fs_opt_proc (void *data, const char *arg, int key,
 }
 
 int
-mp3_run(int argc, char **argv)
+mfs_run(int argc, char **argv)
 {
 	int ret;
 	/*
@@ -202,13 +202,13 @@ mp3_run(int argc, char **argv)
 
 	struct fuse_args args = FUSE_ARGS_INIT (argc, argv);
 
-	if (fuse_opt_parse(&args, NULL, NULL, mp3fs_opt_proc) != 0)
+	if (fuse_opt_parse(&args, NULL, NULL, musicfs_opt_proc) != 0)
 		exit (1);
 		
 	DEBUG("musicpath: %s\n", musicpath);
-	mp3_initscan(musicpath);
+	mfs_initscan(musicpath);
 
 	ret = 0;
-	ret = fuse_main(args.argc, args.argv, &mp3_ops, NULL);
+	ret = fuse_main(args.argc, args.argv, &mfs_ops, NULL);
 	return (ret);
 }
