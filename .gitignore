@@ -1,0 +1,5 @@
+*.o
+*~
+musicfs
+debug.txt
+music.db
