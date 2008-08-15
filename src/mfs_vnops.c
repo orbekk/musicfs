@@ -28,6 +28,7 @@
 #include <err.h>
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <dirent.h>
 #include <fuse.h>
 #include <sys/param.h>
@@ -202,7 +203,8 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 	fd.found = 0;
 	size_t bytes;
 
-	DEBUG("read: path(%s) offset(%d) size(%d)\n", path, (int)offset, (int)size);
+	DEBUG("read: path(%s) offset(%d) size(%d)\n", path, (int)offset,
+		  (int)size);
 	if (strcmp(path, "/.config") == 0) {
 		char *mfsrc = mfs_get_home_path(".mfsrc");
 		int fd = open(mfsrc, O_RDONLY);
@@ -234,11 +236,30 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 }
 
 static int mfs_write(const char *path, const char *buf, size_t size,
-					 off_t off, struct fuse_file_info *fi)
+					 off_t offset, struct fuse_file_info *fi)
 {
-	DEBUG("writing to %s, size(%d), offset(%d)\n\t%s\n",
-	    path, size, (int)off, buf);
-	return (size);	
+	size_t bytes;
+
+	DEBUG("write: path(%s) offset(%d) size(%d)\n", path, (int)offset,
+		  (int)size);
+
+	if (strcmp(path, "/.config") == 0) {
+		char *mfsrc = mfs_get_home_path(".mfsrc");
+		int fd = open(mfsrc, O_WRONLY);
+		free(mfsrc);
+		lseek(fd, offset, SEEK_CUR);
+		bytes = write(fd, buf, size);
+		close(fd);
+		return (bytes);
+	}
+
+	return (-1);	
+}
+
+static int mfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+	DEBUG("create %s\n", path);
+	return (-1);
 }
 
 static int mfs_mknod(const char *path, mode_t mode, dev_t rdev)
@@ -249,12 +270,88 @@ static int mfs_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int mfs_truncate(const char *path, off_t size)
 {
+	char *mfsrc;
+	int res;
 	DEBUG("truncating %s to size %d\n", path, (int)size);
 
-	if (strcmp(path, "/.config") == 0)
-		return (0);
+	if (strcmp(path, "/.config") == 0) {
+		mfsrc = mfs_get_home_path(".mfsrc");
+		res = truncate(mfsrc, size);
+		DEBUG("truncated %s with result: %d\n", mfsrc, res)
+		free(mfsrc);
+		return (res);
+	}
 
 	return (-1);
+}
+
+static int mfs_flush(const char *path, struct fuse_file_info *fi)
+{
+	DEBUG("flushing path %s\n", path);
+	if (strcmp(path, "/.config") == 0) {
+		return (0);
+	}
+
+	return (-1);
+}
+
+static int mfs_fsync(const char *path, int datasync,
+					 struct fuse_file_info *fi)
+{
+	DEBUG("fsync path %s\n", path);
+	return (0);
+}
+
+static int mfs_release(const char *path, struct fuse_file_info *fi)
+{
+	DEBUG("release %s\n", path);
+	return (0);
+}
+
+static int mfs_chmod(const char *path, mode_t mode)
+{
+	char *mfsrc;
+	int ret;
+
+	DEBUG("chmod %s, %d\n", path, (int)mode);
+	if (strcmp(path, "/.config") == 0) {
+		mfsrc = mfs_get_home_path(".mfsrc");
+		ret = chmod(mfsrc, mode);
+		free(mfsrc);
+		return (ret);
+	}
+	
+	return (-1);
+}
+
+static int mfs_utimens(const char *path, const struct timespec tv[2])
+{
+	char *mfsrc;
+	int ret;
+
+	DEBUG("utime %s\n", path);
+	
+	if (strcmp(path, "/.config") == 0) {
+		mfsrc = mfs_get_home_path(".mfsrc");
+		ret = 0; /* utimes(mfsrc, tval); */
+		free(mfsrc);
+		return (ret);
+	}
+
+	return (-1);
+}
+
+static int mfs_access(const char *path, int mask)
+{
+	DEBUG("access called for path %s\n", path);
+	return (0);
+}
+
+static int mfs_setxattr(const char *path, const char *name,
+						const char *val, size_t size, int flags)
+{
+	DEBUG("setxattr on path %s: %s=%s\n", path, name, val);
+	return (0);
 }
 
 static struct fuse_operations mfs_ops = {
@@ -264,7 +361,13 @@ static struct fuse_operations mfs_ops = {
 	.read		= mfs_read,
 	.write      = mfs_write,
 	.mknod      = mfs_mknod,
+	.create     = mfs_create,
 	.truncate   = mfs_truncate,
+	.fsync      = mfs_fsync,
+	.chmod      = mfs_chmod,
+	.release    = mfs_release,
+	.utimens    = mfs_utimens,
+	.setxattr   = mfs_setxattr,
 };
 
 static int musicfs_opt_proc (void *data, const char *arg, int key,
