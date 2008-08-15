@@ -18,10 +18,14 @@ $ sqlite3 music.db < dbschema.sql
 
 3. Run:
 
-$ ./musicfs -d <music path> <mount path>
+$ ./musicfs -d <mount path>
 
 On my computer, it only behaves correctly in debug mode (-d) due to a
 bug of some kind. I don't really know why :'(
+
+4. Add music directory:
+
+Edit <mount path>/.config and follow the instructions.
 
 
 Dependencies

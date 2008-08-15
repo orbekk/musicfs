@@ -22,10 +22,8 @@
 #define _MP3FS_H_
 struct fuse_args;
 
-#define DBNAME "music.db"
-
 int	mfs_run(int, char **);
-int	mfs_initscan(char *);
+int	mfs_initscan();
 
 
 /* 
@@ -33,7 +31,7 @@ int	mfs_initscan(char *);
  * files, for instance scanning the collection.
  */
 typedef void traverse_fn_t(char *);
-void traverse_hierarchy(char *, traverse_fn_t);
+void traverse_hierarchy(const char *, traverse_fn_t);
 traverse_fn_t mfs_scan;
 
 /*
@@ -65,6 +63,8 @@ lookup_fn_t mfs_lookup_list;
 lookup_fn_t mfs_lookup_open;
 /* Lookup function stat'ing a file. */
 lookup_fn_t mfs_lookup_stat;
+/* Lookup function loading a path into DB */
+lookup_fn_t mfs_lookup_load_path;
 
 struct lookuphandle;
 
@@ -78,6 +78,8 @@ void	 mfs_lookup_album(const char *, struct filler_data *);
 char	*mfs_gettoken(const char *, int);
 int	 mfs_numtoken(const char *);
 int      mfs_file_data_for_path(const char *, void *);
+int      mfs_reload_config();
+char    *mfs_get_home_path(const char *);
 
 enum mfs_filetype mfs_get_filetype(const char *);
 #endif

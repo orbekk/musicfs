@@ -28,6 +28,7 @@
 #include <err.h>
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <dirent.h>
 #include <fuse.h>
 #include <sys/param.h>
@@ -38,9 +39,6 @@
 #include <musicfs.h>
 #include <debug.h>
 
-char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/musicfs/music";
-char *logpath = "/home/lulf/dev/musicfs/musicfs.log";
-
 static int mfs_getattr (const char *path, struct stat *stbuf)
 {
 	struct file_data fd;
@@ -50,10 +48,18 @@ static int mfs_getattr (const char *path, struct stat *stbuf)
 	int status = 0;
 	memset (stbuf, 0, sizeof (struct stat));
 
-	if (strcmp (path, "/") == 0) {
+	if (strcmp(path, "/") == 0) {
 		stbuf->st_mode = S_IFDIR | 0755;
 		stbuf->st_nlink = 2;
 		return 0;
+	}
+
+	if (strcmp(path, "/.config") == 0) {
+		char *mfsrc = mfs_get_home_path(".mfsrc");
+		int res = stat(mfsrc, stbuf);
+		DEBUG("stat result for %s: %d\n", mfsrc, res);
+		free(mfsrc);
+		return (res);
 	}
 
 	enum mfs_filetype type = mfs_get_filetype(path);
@@ -102,6 +108,7 @@ static int mfs_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 		filler(buf, "Genres", NULL, 0);
 		filler(buf, "Tracks", NULL, 0);
 		filler(buf, "Albums", NULL, 0);
+		filler(buf, ".config", NULL, 0);
 		return (0);
 	}
 
@@ -136,6 +143,9 @@ static int mfs_open (const char *path, struct fuse_file_info *fi)
 	fd.fd = -1;
 	fd.found = 0;
 
+	if (strcmp(path, "/.config") == 0)
+		return (0);
+
 	int status = mfs_file_data_for_path(path, &fd);
 	if (status != 0)
 		return (status);
@@ -166,6 +176,18 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 	fd.found = 0;
 	size_t bytes;
 
+	DEBUG("read: path(%s) offset(%d) size(%d)\n", path, (int)offset,
+		  (int)size);
+	if (strcmp(path, "/.config") == 0) {
+		char *mfsrc = mfs_get_home_path(".mfsrc");
+		int fd = open(mfsrc, O_RDONLY);
+		free(mfsrc);
+		lseek(fd, offset, SEEK_CUR);
+		bytes = read(fd, buf, size);
+		close(fd);
+		return (bytes);
+	}
+
 	int status = mfs_file_data_for_path(path, &fd);
 	if (status != 0)
 		return (status);
@@ -186,24 +208,159 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 	 */
 }
 
+static int mfs_write(const char *path, const char *buf, size_t size,
+					 off_t offset, struct fuse_file_info *fi)
+{
+	size_t bytes;
+
+	DEBUG("write: path(%s) offset(%d) size(%d)\n", path, (int)offset,
+		  (int)size);
+
+	if (strcmp(path, "/.config") == 0) {
+		char *mfsrc = mfs_get_home_path(".mfsrc");
+		int fd = open(mfsrc, O_WRONLY);
+		free(mfsrc);
+		lseek(fd, offset, SEEK_CUR);
+		bytes = write(fd, buf, size);
+		close(fd);
+		return (bytes);
+	}
+
+	return (-1);	
+}
+
+static int mfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+	DEBUG("create %s\n", path);
+	return (-1);
+}
+
+static int mfs_mknod(const char *path, mode_t mode, dev_t rdev)
+{
+	DEBUG("mknod %s\n", path);
+	return (-1);
+}
+
+static int mfs_truncate(const char *path, off_t size)
+{
+	char *mfsrc;
+	int res;
+	DEBUG("truncating %s to size %d\n", path, (int)size);
+
+	if (strcmp(path, "/.config") == 0) {
+		mfsrc = mfs_get_home_path(".mfsrc");
+		res = truncate(mfsrc, size);
+		DEBUG("truncated %s with result: %d\n", mfsrc, res)
+		free(mfsrc);
+		return (res);
+	}
+
+	return (-1);
+}
+
+static int mfs_flush(const char *path, struct fuse_file_info *fi)
+{
+	DEBUG("flushing path %s\n", path);
+	if (strcmp(path, "/.config") == 0) {
+		return (0);
+	}
+
+	return (-1);
+}
+
+static int mfs_fsync(const char *path, int datasync,
+					 struct fuse_file_info *fi)
+{
+	DEBUG("fsync path %s\n", path);
+	return (0);
+}
+
+static int mfs_release(const char *path, struct fuse_file_info *fi)
+{
+	DEBUG("release %s\n", path);
+
+	if (strcmp(path, "/.config") == 0) {
+		/* Reload configuration file */
+		mfs_reload_config();
+	}
+
+	return (0);
+}
+
+static int mfs_chmod(const char *path, mode_t mode)
+{
+	char *mfsrc;
+	int ret;
+
+	DEBUG("chmod %s, %d\n", path, (int)mode);
+	if (strcmp(path, "/.config") == 0) {
+		mfsrc = mfs_get_home_path(".mfsrc");
+		ret = chmod(mfsrc, mode);
+		free(mfsrc);
+		return (ret);
+	}
+	
+	return (-1);
+}
+
+static int mfs_utimens(const char *path, const struct timespec tv[2])
+{
+	char *mfsrc;
+	int ret;
+
+	DEBUG("utime %s\n", path);
+	
+	if (strcmp(path, "/.config") == 0) {
+		mfsrc = mfs_get_home_path(".mfsrc");
+		ret = 0; /* utimes(mfsrc, tval); */
+		free(mfsrc);
+		return (ret);
+	}
+
+	return (-1);
+}
+
+static int mfs_access(const char *path, int mask)
+{
+	DEBUG("access called for path %s\n", path);
+	return (0);
+}
+
+static int mfs_setxattr(const char *path, const char *name,
+						const char *val, size_t size, int flags)
+{
+	DEBUG("setxattr on path %s: %s=%s\n", path, name, val);
+	return (0);
+}
+
 static struct fuse_operations mfs_ops = {
-	.getattr	= mfs_getattr,
-	.readdir	= mfs_readdir,
-	.open		= mfs_open,
-	.read		= mfs_read,
+	.getattr    = mfs_getattr,
+	.readdir    = mfs_readdir,
+	.open       = mfs_open,
+	.read       = mfs_read,
+	.write      = mfs_write,
+	.mknod      = mfs_mknod,
+	.create     = mfs_create,
+	.truncate   = mfs_truncate,
+	.fsync      = mfs_fsync,
+	.chmod      = mfs_chmod,
+	.release    = mfs_release,
+	.utimens    = mfs_utimens,
+	.setxattr   = mfs_setxattr,
 };
 
 static int musicfs_opt_proc (void *data, const char *arg, int key,
 						   struct fuse_args *outargs)
 {
-	static int musicpath_set = 0;
+	/* Using config now. This is how we added the additional parameter: */
+	/* 	static int musicpath_set = 0; */
+	/* 	if (key == FUSE_OPT_KEY_NONOPT && !musicpath_set) { */
+	/* 		/\* The source directory isn't already set, let's do it *\/ */
+	/* 		strcpy(musicpath, arg); */
+	/* 		musicpath_set = 1; */
+	/* 		return (0); */
+	/* 	} */
 
-	if (key == FUSE_OPT_KEY_NONOPT && !musicpath_set) {
-		/* The source directory isn't already set, let's do it */
-		strcpy(musicpath, arg);
-		musicpath_set = 1;
-		return (0);
-	}
 	return (1);
 }
 
@@ -211,13 +368,9 @@ int
 mfs_run(int argc, char **argv)
 {
 	int ret;
-	/*
-	 * XXX: Build index of mp3's.
-	 */
 
-	/* Update tables. */
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s <musicfolder> <mountpoint>\n", argv[0]); 
+	if (argc < 1) {
+		fprintf(stderr, "Usage: %s <mountpoint>\n", argv[0]); 
 		return (-1);
 	}
 
@@ -226,8 +379,7 @@ mfs_run(int argc, char **argv)
 	if (fuse_opt_parse(&args, NULL, NULL, musicfs_opt_proc) != 0)
 		exit (1);
 		
-	DEBUG("musicpath: %s\n", musicpath);
-	mfs_initscan(musicpath);
+	mfs_initscan();
 
 	ret = 0;
 	ret = fuse_main(args.argc, args.argv, &mfs_ops, NULL);

@@ -23,3 +23,8 @@ CREATE TABLE genre (
 	name varchar(200) NOT NULL,
 	PRIMARY KEY(name)
 );
+
+CREATE TABLE path (
+	path varchar(255),
+	PRIMARY KEY(path)
+);

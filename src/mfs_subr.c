@@ -38,6 +38,8 @@
 #include <sqlite3.h>
 #include <debug.h>
 
+#define MFS_HANDLE ((void*)-1)
+
 struct lookuphandle {
 	sqlite3 *handle;
 	sqlite3_stmt *st;
@@ -48,21 +50,151 @@ struct lookuphandle {
 	lookup_fn_t *lookup;
 };
 
+char *db_path;
 sqlite3 *handle;
 
+/*
+ * Returns the path to $HOME[/extra]
+ */
+char *mfs_get_home_path(const char *extra)
+{
+	int hlen, exlen = 0;
+	char *res;
+	const char *home = getenv("HOME");
+
+	hlen = strlen(home);
+	if (extra)
+		exlen = strlen(extra);
+
+	res = malloc(sizeof(char) * (hlen + exlen + 2));
+	strcpy(res, home);
+
+	if (extra) {
+		res[hlen] = '/';
+		strcpy(res + hlen + 1, extra);
+	}
+
+	return (res);
+}
+
+/*
+ * Insert a musicpath into the database.
+ */
 int
-mfs_initscan(char *musicpath)
+mfs_insert_path(char *path, sqlite3 *handle)
+{
+	int res;
+	sqlite3_stmt *st;
+
+	/* Add path to registered paths in DB */
+	res = sqlite3_prepare_v2(handle,
+	    "SELECT path FROM path WHERE path LIKE ?",
+	    -1, &st, NULL);
+	if (res != SQLITE_OK) {
+		warnx("Error preparing stamtement: %s\n",
+		    sqlite3_errmsg(handle));
+		return (-1);
+	}
+	sqlite3_bind_text(st, 1, path, -1, SQLITE_TRANSIENT);
+	res = sqlite3_step(st);
+	sqlite3_finalize(st);
+
+	if (res == SQLITE_DONE) {
+		DEBUG("Inserting path '%s' to paths\n", path);
+		/* Doesn't exist. Insert it */
+		res = sqlite3_prepare_v2(handle,
+		    "INSERT INTO path(path) VALUES(?)",
+		    -1, &st, NULL);
+		if (res != SQLITE_OK) {
+			warnx("Error preparing stamtement: %s\n",
+				  sqlite3_errmsg(handle));
+			return (-1);
+		}
+		sqlite3_bind_text(st, 1, path, -1, SQLITE_TRANSIENT);
+		res = sqlite3_step(st);
+		sqlite3_finalize(st);
+		if (res != SQLITE_DONE) {
+			warnx("Error inserting into database: %s\n",
+			    sqlite3_errmsg(handle));
+			return (-1);
+		}
+	}
+	return (0);
+}
+
+/*
+ * Reload the configuration from $HOME/.mfsrc
+ *
+ */
+int
+mfs_reload_config()
+{
+	int res, len;
+	char *mfsrc = mfs_get_home_path(".mfsrc");
+	char line[4096];
+	struct lookuphandle *lh;
+	sqlite3 *handle;
+	FILE *f = fopen(mfsrc, "r");
+
+	if (f == NULL) {
+		warnx("Couldn't open configuration file %s\n",
+		    mfsrc);
+		return (-1);
+	}
+
+	res = sqlite3_open(db_path, &handle);
+	if (res) {
+		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
+		sqlite3_close(handle);
+		return (-1);
+	}
+
+	/* XXX: Just adding the paths for now. queue.h for the rest*/
+
+	while (fgets(line, 4096, f) != NULL) {
+		len = strlen(line);
+		if (len > 0 && line[0] != '\n' && line[0] != '#') {
+			if (line[len-1] == '\n')
+				line[len-1] = '\0';
+
+			res = mfs_insert_path(line, handle);
+			DEBUG("inserted path %s, returned(%d)\n", line, res);
+		}
+	}
+
+	free (mfsrc);
+	sqlite3_close(handle);
+
+	/* Do the actual loading */
+	lh = mfs_lookup_start(0, MFS_HANDLE, mfs_lookup_load_path,
+	    "SELECT path FROM path");
+	mfs_lookup_finish(lh);
+
+	sqlite3_close(handle);
+	return (0);
+}
+
+int
+mfs_initscan()
 {
 	int error;
-
+	db_path = mfs_get_home_path(".mfs.db");
 	/* Open database. */
-	error = sqlite3_open(DBNAME, &handle);
+	error = sqlite3_open(db_path, &handle);
 	if (error) {
 		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
 		sqlite3_close(handle);
 		return (-1);
 	}
-	traverse_hierarchy(musicpath, mfs_scan);
+
+/* 	error = mfs_insert_path(musicpath, handle); */
+/* 	if (error != 0) */
+/* 		return (error); */
+
+	error = mfs_reload_config();
+	if (error != 0)
+		return (error);
+
 	sqlite3_close(handle);
 	return (0);
 }
@@ -73,8 +205,9 @@ mfs_initscan(char *musicpath)
  * sub-directories.
  */
 void
-traverse_hierarchy(char *dirpath, traverse_fn_t fileop)
+traverse_hierarchy(const char *dirpath, traverse_fn_t fileop)
 {
+	DEBUG("traversing %s\n", dirpath);
 	DIR *dirp;
 	struct dirent *dp;
 	char filepath[MAXPATHLEN];
@@ -304,15 +437,22 @@ mfs_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 		return (NULL);
 	lh->field = field;
 	lh->lookup = fn;
-	lh->priv = data;
+
 	/* Open database. */
-	error = sqlite3_open(DBNAME, &lh->handle);
+	error = sqlite3_open(db_path, &lh->handle);
 	if (error) {
 		warnx("Can't open database: %s\n", sqlite3_errmsg(lh->handle));
 		sqlite3_close(lh->handle);
 		free(lh);
 		return (NULL);
 	}
+
+	if (data == MFS_HANDLE)
+		/* Workaround to give access to the handle */
+		lh->priv = lh->handle;
+	else
+		lh->priv = data;
+
 	ret = sqlite3_prepare_v2(lh->handle, query, -1, &lh->st, NULL);
 	if (ret != SQLITE_OK) {
 		free(lh);
@@ -732,6 +872,18 @@ mfs_lookup_stat(void *data, const char *str)
 	if (stat(str, st) < 0)
 		return (0);
 	return (1);
+}
+
+/*
+ * Load a path into database
+ */
+int
+mfs_lookup_load_path(void *data, const char *str)
+{
+	handle = (sqlite3 *)data;
+	traverse_hierarchy(str, mfs_scan);
+
+	return (0);
 }
 
 /*
