@@ -170,7 +170,7 @@ static int mfs_open (const char *path, struct fuse_file_info *fi)
 	fd.found = 0;
 
 	if (strcmp(path, "/.config") == 0)
-		return (-open("~/.mfsrc", O_RDONLY));
+		return (0);
 
 	int status = mfs_file_data_for_path(path, &fd);
 	if (status != 0)
@@ -204,12 +204,13 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 
 	DEBUG("read: path(%s) offset(%d) size(%d)\n", path, (int)offset, (int)size);
 	if (strcmp(path, "/.config") == 0) {
-/* 		DEBUG("read from config, offset(%d), size(%d)\n", (int)offset, (int)size); */
-/* 		len = strlen(paths_info); */
-/* 		if (size > (len - offset)) */
-/* 			size = len - offset; */
-/* 		strncpy(buf, paths_info + offset, size); */
-		return (0);
+		char *mfsrc = mfs_get_home_path(".mfsrc");
+		int fd = open(mfsrc, O_RDONLY);
+		free(mfsrc);
+		lseek(fd, offset, SEEK_CUR);
+		bytes = read(fd, buf, size);
+		close(fd);
+		return (bytes);
 	}
 
 	int status = mfs_file_data_for_path(path, &fd);
