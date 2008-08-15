@@ -122,6 +122,20 @@ mfs_insert_path(char *path)
 int
 mfs_reload_config()
 {
+	int res;
+	char *mfsrc = mfs_get_home_path(".mfsrc");
+	FILE *f = fopen(mfsrc, "r");
+	char line[4096];
+	
+	/* XXX: Just adding the paths for now. queue.h for the rest*/
+	fgets(line, 4096, f);
+
+	if (line[0] != '#') {
+		res = mfs_insert_path(line);
+		DEBUG("inserted path %s, returned(%d)\n", line, res);
+	}
+
+	free (mfsrc);
 	return (0);
 }
 

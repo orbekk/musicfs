@@ -78,6 +78,7 @@ void	 mfs_lookup_album(const char *, struct filler_data *);
 char	*mfs_gettoken(const char *, int);
 int	 mfs_numtoken(const char *);
 int      mfs_file_data_for_path(const char *, void *);
+int      mfs_reload_config();
 char    *mfs_get_home_path(const char *);
 
 enum mfs_filetype mfs_get_filetype(const char *);
