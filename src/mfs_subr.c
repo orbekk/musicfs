@@ -78,7 +78,7 @@ char *mfs_get_home_path(const char *extra)
  * Insert a musicpath into the database.
  */
 int
-mfs_insert_path(char *path)
+mfs_insert_path(char *path, sqlite3 *handle)
 {
 	int res;
 	sqlite3_stmt *st;
@@ -94,7 +94,10 @@ mfs_insert_path(char *path)
 	}
 	sqlite3_bind_text(st, 1, path, -1, SQLITE_TRANSIENT);
 	res = sqlite3_step(st);
+	sqlite3_finalize(st);
+
 	if (res == SQLITE_DONE) {
+		DEBUG("Inserting path '%s' to paths\n", path);
 		/* Doesn't exist. Insert it */
 		res = sqlite3_prepare_v2(handle,
 		    "INSERT INTO path(path) VALUES(?)",
@@ -122,19 +125,33 @@ mfs_insert_path(char *path)
 int
 mfs_reload_config()
 {
-	int res;
+	int res, len;
 	char *mfsrc = mfs_get_home_path(".mfsrc");
 	FILE *f = fopen(mfsrc, "r");
 	char line[4096];
+	sqlite3 *handle;
 	
-	/* XXX: Just adding the paths for now. queue.h for the rest*/
-	fgets(line, 4096, f);
-
-	if (line[0] != '#') {
-		res = mfs_insert_path(line);
-		DEBUG("inserted path %s, returned(%d)\n", line, res);
+	res = sqlite3_open(DBNAME, &handle);
+	if (res) {
+		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
+		sqlite3_close(handle);
+		return (-1);
 	}
 
+	/* XXX: Just adding the paths for now. queue.h for the rest*/
+
+	while (fgets(line, 4096, f) != NULL) {
+		len = strlen(line);
+		if (len > 0 && line[0] != '\n' && line[0] != '#') {
+			if (line[len-1] == '\n')
+				line[len-1] = '\0';
+
+			res = mfs_insert_path(line, handle);
+			DEBUG("inserted path %s, returned(%d)\n", line, res);
+		}
+	}
+
+	sqlite3_close(handle);
 	free (mfsrc);
 	return (0);
 }
@@ -152,7 +169,11 @@ mfs_initscan(char *musicpath)
 		return (-1);
 	}
 
-	error = mfs_insert_path(musicpath);
+	error = mfs_insert_path(musicpath, handle);
+	if (error != 0)
+		return (error);
+
+	error = mfs_reload_config();
 	if (error != 0)
 		return (error);
 
