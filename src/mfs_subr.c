@@ -51,6 +51,45 @@ struct lookuphandle {
 sqlite3 *handle;
 
 int
+mfs_insert_path(char *path)
+{
+	int res;
+	sqlite3_stmt *st;
+
+	/* Add path to registered paths in DB */
+	res = sqlite3_prepare_v2(handle,
+	    "SELECT path FROM path WHERE path LIKE ?",
+	    -1, &st, NULL);
+	if (res != SQLITE_OK) {
+		warnx("Error preparing stamtement: %s\n",
+		    sqlite3_errmsg(handle));
+		return (-1);
+	}
+	sqlite3_bind_text(st, 1, path, -1, SQLITE_TRANSIENT);
+	res = sqlite3_step(st);
+	if (res == SQLITE_DONE) {
+		/* Doesn't exist. Insert it */
+		res = sqlite3_prepare_v2(handle,
+		    "INSERT INTO path(path) VALUES(?)",
+		    -1, &st, NULL);
+		if (res != SQLITE_OK) {
+			warnx("Error preparing stamtement: %s\n",
+				  sqlite3_errmsg(handle));
+			return (-1);
+		}
+		sqlite3_bind_text(st, 1, path, -1, SQLITE_TRANSIENT);
+		res = sqlite3_step(st);
+		sqlite3_finalize(st);
+		if (res != SQLITE_DONE) {
+			warnx("Error inserting into database: %s\n",
+			    sqlite3_errmsg(handle));
+			return (-1);
+		}
+	}
+	return (0);
+}
+
+int
 mfs_initscan(char *musicpath)
 {
 	int error;
@@ -64,36 +103,9 @@ mfs_initscan(char *musicpath)
 		return (-1);
 	}
 
-	/* Add path to registered paths in DB */
-	error = sqlite3_prepare_v2(handle,
-	    "SELECT path FROM path WHERE path LIKE ?",
-	    -1, &st, NULL);
-	if (error != SQLITE_OK) {
-		warnx("Error preparing stamtement: %s\n",
-		    sqlite3_errmsg(handle));
-		return (-1);
-	}
-	sqlite3_bind_text(st, 1, musicpath, -1, SQLITE_TRANSIENT);
-	error = sqlite3_step(st);
-	if (error == SQLITE_DONE) {
-		/* Doesn't exist. Insert it */
-		error = sqlite3_prepare_v2(handle,
-		    "INSERT INTO path(path) VALUES(?)",
-		    -1, &st, NULL);
-		if (error != SQLITE_OK) {
-			warnx("Error preparing stamtement: %s\n",
-				  sqlite3_errmsg(handle));
-			return (-1);
-		}
-		sqlite3_bind_text(st, 1, musicpath, -1, SQLITE_TRANSIENT);
-		error = sqlite3_step(st);
-		sqlite3_finalize(st);
-		if (error != SQLITE_DONE) {
-			warnx("Error inserting into database: %s\n",
-			    sqlite3_errmsg(handle));
-			return (-1);
-		}
-	}
+	error = mfs_insert_path(musicpath);
+	if (error != 0)
+		return (error);
 
 	traverse_hierarchy(musicpath, mfs_scan);
 	sqlite3_close(handle);
