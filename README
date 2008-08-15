@@ -18,6 +18,98 @@ $ make
 $ bash initialize.sh
 
 
+Screenshot
+~~~~~~~~~~
+This is a "screenshot" (or dump, or whatever) of musicfs, displaying
+the hierarchy we expose. /tmp/mp3s is my mountpoint, and the paths are
+added to my "collection" when I append them to .config.
+
+vannlilje:/tmp/mp3s% echo "/storage/musikk/Beady_Belle/Belvedere" >> .config
+vannlilje:/tmp/mp3s% echo "/storage/musikk/Micatone" >> .config
+vannlilje:/tmp/mp3s% tree
+.
+|-- Albums
+|   |-- Belle et Fou (Original Soundtrack)
+|   |   `-- D-D-D-D-Dance.mp3
+|   |-- Belvedere
+|   |   |-- A Touch Of Paradise.mp3
+|   |   |-- Apron Strings.mp3
+|   |   |-- Boiling Milk.mp3
+|   |   |-- Intermission Music (Feat. Jamie Cullum).mp3
+|   |   |-- Self-Fulfilling (Feat. India Arie).mp3
+|   |   |-- Tower Of Lament.mp3
+|   |   |-- Tranquil Flight.mp3
+|   |   |-- Two-Faced.mp3
+|   |   `-- Viscous Ocean.mp3
+|   `-- Nomad Songs
+|       |-- Circle.mp3
+|       |-- Mars Reprise.mp3
+|       |-- Mars.mp3
+|       |-- Nomad.mp3
+|       |-- Out Of The Game.mp3
+|       |-- Trouble Boy (feat. Ear aka Demba Nabé).mp3
+|       |-- Where I Am: Part 1.mp3
+|       |-- Where I Am: Part 2.mp3
+|       |-- Yeah, Yeah, Yeah (That´s The Way It Goes).mp3
+|       `-- You´ve Taken All.mp3
+|-- Artists
+|   |-- Beady Belle
+|   |   `-- Belvedere
+|   |       |-- 01 Apron Strings.mp3
+|   |       |-- 02 A Touch Of Paradise.mp3
+|   |       |-- 03 Tower Of Lament.mp3
+|   |       |-- 04 Self-Fulfilling (Feat. India Arie).mp3
+|   |       |-- 05 Tranquil Flight.mp3
+|   |       |-- 06 Intermission Music (Feat. Jamie Cullum).mp3
+|   |       |-- 07 Viscous Ocean.mp3
+|   |       |-- 08 Boiling Milk.mp3
+|   |       `-- 09 Two-Faced.mp3
+|   |-- Jazzanova
+|   |   `-- Belle et Fou (Original Soundtrack)
+|   |       `-- 07 D-D-D-D-Dance.mp3
+|   `-- Micatone
+|       `-- Nomad Songs
+|           |-- 01 Mars.mp3
+|           |-- 02 Out Of The Game.mp3
+|           |-- 03 Where I Am: Part 1.mp3
+|           |-- 04 Where I Am: Part 2.mp3
+|           |-- 05 Trouble Boy (feat. Ear aka Demba Nabé).mp3
+|           |-- 06 Nomad.mp3
+|           |-- 07 Yeah, Yeah, Yeah (That´s The Way It Goes).mp3
+|           |-- 09 You´ve Taken All.mp3
+|           |-- 10 Circle.mp3
+|           `-- 11 Mars Reprise.mp3
+|-- Genres
+|   |-- Electronic
+|   |   |-- Belle et Fou (Original Soundtrack)
+|   |   `-- Nomad Songs
+|   `-- Jazz
+|       `-- Belvedere
+`-- Tracks
+    |-- Beady Belle - A Touch Of Paradise.mp3
+    |-- Beady Belle - Apron Strings.mp3
+    |-- Beady Belle - Boiling Milk.mp3
+    |-- Beady Belle - Intermission Music (Feat. Jamie Cullum).mp3
+    |-- Beady Belle - Self-Fulfilling (Feat. India Arie).mp3
+    |-- Beady Belle - Tower Of Lament.mp3
+    |-- Beady Belle - Tranquil Flight.mp3
+    |-- Beady Belle - Two-Faced.mp3
+    |-- Beady Belle - Viscous Ocean.mp3
+    |-- Jazzanova - D-D-D-D-Dance.mp3
+    |-- Micatone - Circle.mp3
+    |-- Micatone - Mars Reprise.mp3
+    |-- Micatone - Mars.mp3
+    |-- Micatone - Nomad.mp3
+    |-- Micatone - Out Of The Game.mp3
+    |-- Micatone - Trouble Boy (feat. Ear aka Demba Nabé).mp3
+    |-- Micatone - Where I Am: Part 1.mp3
+    |-- Micatone - Where I Am: Part 2.mp3
+    |-- Micatone - Yeah, Yeah, Yeah (That´s The Way It Goes).mp3
+    `-- Micatone - You´ve Taken All.mp3
+
+18 directories, 60 files
+
+
 Dependencies
 ~~~~~~~~~~~~
 - taglib 1.5
