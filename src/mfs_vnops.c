@@ -278,6 +278,12 @@ static int mfs_fsync(const char *path, int datasync,
 static int mfs_release(const char *path, struct fuse_file_info *fi)
 {
 	DEBUG("release %s\n", path);
+
+	if (strcmp(path, "/.config") == 0) {
+		/* Reload configuration file */
+		mfs_reload_config();
+	}
+
 	return (0);
 }
 
