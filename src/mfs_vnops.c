@@ -349,14 +349,15 @@ static struct fuse_operations mfs_ops = {
 static int musicfs_opt_proc (void *data, const char *arg, int key,
 						   struct fuse_args *outargs)
 {
-	static int musicpath_set = 0;
+	/* Using config now. This is how we added the additional parameter: */
+	/* 	static int musicpath_set = 0; */
+	/* 	if (key == FUSE_OPT_KEY_NONOPT && !musicpath_set) { */
+	/* 		/\* The source directory isn't already set, let's do it *\/ */
+	/* 		strcpy(musicpath, arg); */
+	/* 		musicpath_set = 1; */
+	/* 		return (0); */
+	/* 	} */
 
-	if (key == FUSE_OPT_KEY_NONOPT && !musicpath_set) {
-		/* The source directory isn't already set, let's do it */
-		strcpy(musicpath, arg);
-		musicpath_set = 1;
-		return (0);
-	}
 	return (1);
 }
 
@@ -364,13 +365,10 @@ int
 mfs_run(int argc, char **argv)
 {
 	int ret;
-	/*
-	 * XXX: Build index of mp3's.
-	 */
 
 	/* Update tables. */
-	if (argc < 2) {
-		fprintf(stderr, "Usage: %s <musicfolder> <mountpoint>\n", argv[0]); 
+	if (argc < 1) {
+		fprintf(stderr, "Usage: %s <mountpoint>\n", argv[0]); 
 		return (-1);
 	}
 
