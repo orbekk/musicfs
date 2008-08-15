@@ -39,9 +39,6 @@
 #include <musicfs.h>
 #include <debug.h>
 
-char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/musicfs/music";
-char *logpath = "/home/lulf/dev/musicfs/musicfs.log";
-
 static int mfs_getattr (const char *path, struct stat *stbuf)
 {
 	struct file_data fd;
@@ -366,7 +363,6 @@ mfs_run(int argc, char **argv)
 {
 	int ret;
 
-	/* Update tables. */
 	if (argc < 1) {
 		fprintf(stderr, "Usage: %s <mountpoint>\n", argv[0]); 
 		return (-1);
@@ -377,8 +373,7 @@ mfs_run(int argc, char **argv)
 	if (fuse_opt_parse(&args, NULL, NULL, musicfs_opt_proc) != 0)
 		exit (1);
 		
-	DEBUG("musicpath: %s\n", musicpath);
-	mfs_initscan(musicpath);
+	mfs_initscan();
 
 	ret = 0;
 	ret = fuse_main(args.argc, args.argv, &mfs_ops, NULL);

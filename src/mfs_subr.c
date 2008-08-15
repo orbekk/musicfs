@@ -50,6 +50,7 @@ struct lookuphandle {
 	lookup_fn_t *lookup;
 };
 
+char *db_path;
 sqlite3 *handle;
 
 /*
@@ -130,12 +131,18 @@ mfs_reload_config()
 {
 	int res, len;
 	char *mfsrc = mfs_get_home_path(".mfsrc");
-	FILE *f = fopen(mfsrc, "r");
 	char line[4096];
 	struct lookuphandle *lh;
 	sqlite3 *handle;
+	FILE *f = fopen(mfsrc, "r");
 
-	res = sqlite3_open(DBNAME, &handle);
+	if (f == NULL) {
+		warnx("Couldn't open configuration file %s\n",
+		    mfsrc);
+		return (-1);
+	}
+
+	res = sqlite3_open(db_path, &handle);
 	if (res) {
 		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
 		sqlite3_close(handle);
@@ -168,12 +175,12 @@ mfs_reload_config()
 }
 
 int
-mfs_initscan(char *musicpath)
+mfs_initscan()
 {
 	int error;
-
+	db_path = mfs_get_home_path(".mfs.db");
 	/* Open database. */
-	error = sqlite3_open(DBNAME, &handle);
+	error = sqlite3_open(db_path, &handle);
 	if (error) {
 		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
 		sqlite3_close(handle);
@@ -432,7 +439,7 @@ mfs_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 	lh->lookup = fn;
 
 	/* Open database. */
-	error = sqlite3_open(DBNAME, &lh->handle);
+	error = sqlite3_open(db_path, &lh->handle);
 	if (error) {
 		warnx("Can't open database: %s\n", sqlite3_errmsg(lh->handle));
 		sqlite3_close(lh->handle);

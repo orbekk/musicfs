@@ -22,10 +22,8 @@
 #define _MP3FS_H_
 struct fuse_args;
 
-#define DBNAME "music.db"
-
 int	mfs_run(int, char **);
-int	mfs_initscan(char *);
+int	mfs_initscan();
 
 
 /* 
