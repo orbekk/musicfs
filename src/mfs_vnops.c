@@ -42,30 +42,6 @@
 char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/musicfs/music";
 char *logpath = "/home/lulf/dev/musicfs/musicfs.log";
 
-/*
- * Returns the path to $HOME[/extra]
- */
-char *mfs_get_home_path(const char *extra)
-{
-	int hlen, exlen = 0;
-	char *res;
-	const char *home = getenv("HOME");
-
-	hlen = strlen(home);
-	if (extra)
-		exlen = strlen(extra);
-
-	res = malloc(sizeof(char) * (hlen + exlen + 2));
-	strcpy(res, home);
-
-	if (extra) {
-		res[hlen] = '/';
-		strcpy(res + hlen + 1, extra);
-	}
-
-	return (res);
-}
-
 static int mfs_getattr (const char *path, struct stat *stbuf)
 {
 	struct file_data fd;

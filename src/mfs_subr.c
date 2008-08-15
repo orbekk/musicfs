@@ -50,6 +50,33 @@ struct lookuphandle {
 
 sqlite3 *handle;
 
+/*
+ * Returns the path to $HOME[/extra]
+ */
+char *mfs_get_home_path(const char *extra)
+{
+	int hlen, exlen = 0;
+	char *res;
+	const char *home = getenv("HOME");
+
+	hlen = strlen(home);
+	if (extra)
+		exlen = strlen(extra);
+
+	res = malloc(sizeof(char) * (hlen + exlen + 2));
+	strcpy(res, home);
+
+	if (extra) {
+		res[hlen] = '/';
+		strcpy(res + hlen + 1, extra);
+	}
+
+	return (res);
+}
+
+/*
+ * Insert a musicpath into the database.
+ */
 int
 mfs_insert_path(char *path)
 {
@@ -89,11 +116,19 @@ mfs_insert_path(char *path)
 	return (0);
 }
 
+/*
+ * Reload the configuration from $HOME/.mfsrc
+ */
+int
+mfs_reload_config()
+{
+	return (0);
+}
+
 int
 mfs_initscan(char *musicpath)
 {
 	int error;
-	sqlite3_stmt *st;
 
 	/* Open database. */
 	error = sqlite3_open(DBNAME, &handle);
