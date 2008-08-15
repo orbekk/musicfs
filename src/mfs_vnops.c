@@ -41,11 +41,29 @@
 char musicpath[MAXPATHLEN]; // = "/home/lulf/dev/musicfs/music";
 char *logpath = "/home/lulf/dev/musicfs/musicfs.log";
 
-/* Information when reading /.config */
-const char* paths_info =
-"# This is the paths I've registered for your music collection.\n"
-"# Add additional paths on their own line in this file, and I'll\n"
-"# scan them.\n";
+/*
+ * Returns the path to $HOME[/extra]
+ */
+char *mfs_get_home_path(const char *extra)
+{
+	int hlen, exlen = 0;
+	char *res;
+	const char *home = getenv("HOME");
+
+	hlen = strlen(home);
+	if (extra)
+		exlen = strlen(extra);
+
+	res = malloc(sizeof(char) * (hlen + exlen + 2));
+	strcpy(res, home);
+
+	if (extra) {
+		res[hlen] = '/';
+		strcpy(res + hlen + 1, extra);
+	}
+
+	return (res);
+}
 
 static int mfs_getattr (const char *path, struct stat *stbuf)
 {
@@ -63,10 +81,11 @@ static int mfs_getattr (const char *path, struct stat *stbuf)
 	}
 
 	if (strcmp(path, "/.config") == 0) {
-		stbuf->st_mode = S_IFREG | 0744;
-		stbuf->st_nlink = 2;
-		stbuf->st_size = strlen(paths_info);
-		return 0;
+		char *mfsrc = mfs_get_home_path(".mfsrc");
+		int res = stat(mfsrc, stbuf);
+		DEBUG("stat result for %s: %d\n", mfsrc, res);
+		free(mfsrc);
+		return (res);
 	}
 
 	enum mfs_filetype type = mfs_get_filetype(path);
@@ -151,7 +170,7 @@ static int mfs_open (const char *path, struct fuse_file_info *fi)
 	fd.found = 0;
 
 	if (strcmp(path, "/.config") == 0)
-		return (0);
+		return (-open("~/.mfsrc", O_RDONLY));
 
 	int status = mfs_file_data_for_path(path, &fd);
 	if (status != 0)
@@ -181,17 +200,16 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 	struct file_data fd;
 	fd.fd = -1;
 	fd.found = 0;
-	int len;
 	size_t bytes;
 
 	DEBUG("read: path(%s) offset(%d) size(%d)\n", path, (int)offset, (int)size);
 	if (strcmp(path, "/.config") == 0) {
-		DEBUG("read from config, offset(%d), size(%d)\n", (int)offset, (int)size);
-		len = strlen(paths_info);
-		if (size > (len - offset))
-			size = len - offset;
-		strncpy(buf, paths_info + offset, size);
-		return (size);
+/* 		DEBUG("read from config, offset(%d), size(%d)\n", (int)offset, (int)size); */
+/* 		len = strlen(paths_info); */
+/* 		if (size > (len - offset)) */
+/* 			size = len - offset; */
+/* 		strncpy(buf, paths_info + offset, size); */
+		return (0);
 	}
 
 	int status = mfs_file_data_for_path(path, &fd);
@@ -230,7 +248,7 @@ static int mfs_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int mfs_truncate(const char *path, off_t size)
 {
-	DEBUG("truncating %s\n", path);
+	DEBUG("truncating %s to size %d\n", path, (int)size);
 
 	if (strcmp(path, "/.config") == 0)
 		return (0);
