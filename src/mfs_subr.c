@@ -38,6 +38,8 @@
 #include <sqlite3.h>
 #include <debug.h>
 
+#define MFS_HANDLE ((void*)-1)
+
 struct lookuphandle {
 	sqlite3 *handle;
 	sqlite3_stmt *st;
@@ -121,6 +123,7 @@ mfs_insert_path(char *path, sqlite3 *handle)
 
 /*
  * Reload the configuration from $HOME/.mfsrc
+ *
  */
 int
 mfs_reload_config()
@@ -129,9 +132,9 @@ mfs_reload_config()
 	char *mfsrc = mfs_get_home_path(".mfsrc");
 	FILE *f = fopen(mfsrc, "r");
 	char line[4096];
-	sqlite3 *handle;
 	struct lookuphandle *lh;
-	
+	sqlite3 *handle;
+
 	res = sqlite3_open(DBNAME, &handle);
 	if (res) {
 		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
@@ -153,9 +156,10 @@ mfs_reload_config()
 	}
 
 	free (mfsrc);
+	sqlite3_close(handle);
 
 	/* Do the actual loading */
-	lh = mfs_lookup_start(0, handle, mfs_lookup_load_path,
+	lh = mfs_lookup_start(0, MFS_HANDLE, mfs_lookup_load_path,
 	    "SELECT path FROM path");
 	mfs_lookup_finish(lh);
 
@@ -176,9 +180,9 @@ mfs_initscan(char *musicpath)
 		return (-1);
 	}
 
-	error = mfs_insert_path(musicpath, handle);
-	if (error != 0)
-		return (error);
+/* 	error = mfs_insert_path(musicpath, handle); */
+/* 	if (error != 0) */
+/* 		return (error); */
 
 	error = mfs_reload_config();
 	if (error != 0)
@@ -426,7 +430,7 @@ mfs_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 		return (NULL);
 	lh->field = field;
 	lh->lookup = fn;
-	lh->priv = data;
+
 	/* Open database. */
 	error = sqlite3_open(DBNAME, &lh->handle);
 	if (error) {
@@ -435,6 +439,13 @@ mfs_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 		free(lh);
 		return (NULL);
 	}
+
+	if (data == MFS_HANDLE)
+		/* Workaround to give access to the handle */
+		lh->priv = lh->handle;
+	else
+		lh->priv = data;
+
 	ret = sqlite3_prepare_v2(lh->handle, query, -1, &lh->st, NULL);
 	if (ret != SQLITE_OK) {
 		free(lh);
@@ -865,7 +876,7 @@ mfs_lookup_load_path(void *data, const char *str)
 	handle = (sqlite3 *)data;
 	traverse_hierarchy(str, mfs_scan);
 
-	return (1);
+	return (0);
 }
 
 /*
