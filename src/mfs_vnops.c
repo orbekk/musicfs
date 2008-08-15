@@ -184,8 +184,9 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 	int len;
 	size_t bytes;
 
+	DEBUG("read: path(%s) offset(%d) size(%d)\n", path, (int)offset, (int)size);
 	if (strcmp(path, "/.config") == 0) {
-		DEBUG("read from paths, offset(%d), size(%d)\n", offset, size);
+		DEBUG("read from config, offset(%d), size(%d)\n", (int)offset, (int)size);
 		len = strlen(paths_info);
 		if (size > (len - offset))
 			size = len - offset;
@@ -213,11 +214,38 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 	 */
 }
 
+static int mfs_write(const char *path, const char *buf, size_t size,
+					 off_t off, struct fuse_file_info *fi)
+{
+	DEBUG("writing to %s, size(%d), offset(%d)\n\t%s\n",
+	    path, size, (int)off, buf);
+	return (size);	
+}
+
+static int mfs_mknod(const char *path, mode_t mode, dev_t rdev)
+{
+	DEBUG("mknod %s\n", path);
+	return (-1);
+}
+
+static int mfs_truncate(const char *path, off_t size)
+{
+	DEBUG("truncating %s\n", path);
+
+	if (strcmp(path, "/.config") == 0)
+		return (0);
+
+	return (-1);
+}
+
 static struct fuse_operations mfs_ops = {
 	.getattr	= mfs_getattr,
 	.readdir	= mfs_readdir,
 	.open		= mfs_open,
 	.read		= mfs_read,
+	.write      = mfs_write,
+	.mknod      = mfs_mknod,
+	.truncate   = mfs_truncate,
 };
 
 static int musicfs_opt_proc (void *data, const char *arg, int key,
