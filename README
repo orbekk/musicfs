@@ -22,7 +22,7 @@ Screenshot
 ~~~~~~~~~~
 This is a "screenshot" (or dump, or whatever) of musicfs, displaying
 the hierarchy we expose. /tmp/mp3s is my mountpoint, and the paths are
-added to my "collection" when I append them to .config.
+added to my music collection when I append them to .config.
 
 vannlilje:/tmp/mp3s% echo "/storage/musikk/Beady_Belle/Belvedere" >> .config
 vannlilje:/tmp/mp3s% echo "/storage/musikk/Micatone" >> .config
