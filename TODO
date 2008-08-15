@@ -23,6 +23,7 @@ v. 0.1
 v. 0.2(?)
 ~~~~~~~~~
 * Inotify/kqueue support for watching music directories
+  * Take a look at http://mark.heily.com/pnotify/.
 
 * Advanced configuration, allowing custom paths. This should be done
   in the configuration file, so something like
