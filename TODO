@@ -17,7 +17,7 @@ v. 0.1
 
 * BUG: musicfs only works in debug mode. Why? Fix this!
 
-* BUG: what to do with songs with out tags? The current behavior,
+* BUG: what to do with songs without tags? The current behavior,
   breaking badly, is probably not what we want.
 
 v. 0.2(?)
