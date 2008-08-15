@@ -355,10 +355,10 @@ static int mfs_setxattr(const char *path, const char *name,
 }
 
 static struct fuse_operations mfs_ops = {
-	.getattr	= mfs_getattr,
-	.readdir	= mfs_readdir,
-	.open		= mfs_open,
-	.read		= mfs_read,
+	.getattr    = mfs_getattr,
+	.readdir    = mfs_readdir,
+	.open       = mfs_open,
+	.read       = mfs_read,
 	.write      = mfs_write,
 	.mknod      = mfs_mknod,
 	.create     = mfs_create,
