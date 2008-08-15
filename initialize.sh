@@ -14,4 +14,8 @@ cat > $HOME/.mfsrc <<EOF
 # /home/orbekk/Music
 EOF
 
-echo "./musicfs -d # to start musicfs"
+echo "Initial configuration finished. Run"
+echo
+echo "  $ ./musicfs -d <mountpoint>"
+echo
+echo "to start musicfs, and follow the instructions in <mountpoint>/.config"

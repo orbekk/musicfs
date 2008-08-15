@@ -12,20 +12,10 @@ Usage
 
 $ make
 
-2. Initialise the database:
+2. Make the initial configuration with the provided script, and follow
+   the instructions:
 
-$ sqlite3 music.db < dbschema.sql
-
-3. Run:
-
-$ ./musicfs -d <mount path>
-
-On my computer, it only behaves correctly in debug mode (-d) due to a
-bug of some kind. I don't really know why :'(
-
-4. Add music directory:
-
-Edit <mount path>/.config and follow the instructions.
+$ bash initialize.sh
 
 
 Dependencies
