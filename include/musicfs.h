@@ -33,7 +33,7 @@ int	mfs_initscan(char *);
  * files, for instance scanning the collection.
  */
 typedef void traverse_fn_t(char *);
-void traverse_hierarchy(char *, traverse_fn_t);
+void traverse_hierarchy(const char *, traverse_fn_t);
 traverse_fn_t mfs_scan;
 
 /*
@@ -65,6 +65,8 @@ lookup_fn_t mfs_lookup_list;
 lookup_fn_t mfs_lookup_open;
 /* Lookup function stat'ing a file. */
 lookup_fn_t mfs_lookup_stat;
+/* Lookup function loading a path into DB */
+lookup_fn_t mfs_lookup_load_path;
 
 struct lookuphandle;
 

@@ -130,6 +130,7 @@ mfs_reload_config()
 	FILE *f = fopen(mfsrc, "r");
 	char line[4096];
 	sqlite3 *handle;
+	struct lookuphandle *lh;
 	
 	res = sqlite3_open(DBNAME, &handle);
 	if (res) {
@@ -151,8 +152,14 @@ mfs_reload_config()
 		}
 	}
 
-	sqlite3_close(handle);
 	free (mfsrc);
+
+	/* Do the actual loading */
+	lh = mfs_lookup_start(0, handle, mfs_lookup_load_path,
+	    "SELECT path FROM path");
+	mfs_lookup_finish(lh);
+
+	sqlite3_close(handle);
 	return (0);
 }
 
@@ -177,7 +184,6 @@ mfs_initscan(char *musicpath)
 	if (error != 0)
 		return (error);
 
-	traverse_hierarchy(musicpath, mfs_scan);
 	sqlite3_close(handle);
 	return (0);
 }
@@ -188,8 +194,9 @@ mfs_initscan(char *musicpath)
  * sub-directories.
  */
 void
-traverse_hierarchy(char *dirpath, traverse_fn_t fileop)
+traverse_hierarchy(const char *dirpath, traverse_fn_t fileop)
 {
+	DEBUG("traversing %s\n", dirpath);
 	DIR *dirp;
 	struct dirent *dp;
 	char filepath[MAXPATHLEN];
@@ -846,6 +853,18 @@ mfs_lookup_stat(void *data, const char *str)
 	st = (struct stat *)data;
 	if (stat(str, st) < 0)
 		return (0);
+	return (1);
+}
+
+/*
+ * Load a path into database
+ */
+int
+mfs_lookup_load_path(void *data, const char *str)
+{
+	handle = (sqlite3 *)data;
+	traverse_hierarchy(str, mfs_scan);
+
 	return (1);
 }
 
