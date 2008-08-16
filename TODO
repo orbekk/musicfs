@@ -1,14 +1,4 @@
-TODO for the nearest future:
-- Add proper debugging facilities.
-- Add some generic way of logging, possibly using any fuse API available to do
-  this.
-- Create a more generic way of mapping a pathname to a file. There are some path
-  lookups we'd like to be able to run more than once.
-- When calling open, buffer the file descriptors, so we don't open them each
-  time, and just read from the filedescriptor. We could behave more fs-like by
-  having lists of active nodes as an analogue to inodes in a typical filesystem.
-  - Save file descriptors in the struct passed to the open/read/... calls.
-
+-*- mode: outline -*-
 
 v. 0.1
 ~~~~~~
@@ -16,17 +6,44 @@ v. 0.1
   improvement)
 
 * BUG: musicfs only works in debug mode. Why? Fix this!
+  * -f (foreground mode) also works
+  * -s (single thread) does not
 
 * BUG: what to do with songs without tags? The current behavior,
-  breaking badly, is probably not what we want.
+breaking badly, is probably not what we want.
+
+* Do file descriptors "the right way", using the provided fuse_file_info
+struct passed to the open/read/write/release calls.
+
+  * Missing .config (this is a matter of style, not performance)
+
+  * BUG: something is wrong with the offset when reading media files.
+    "Ogg : Page out not synced, we skip some bytes" from mplayer
+
 
 v. 0.2(?)
 ~~~~~~~~~
-* Inotify/kqueue support for watching music directories
+* FEATURE: Inotify/kqueue support for watching music directories
+
   * Take a look at http://mark.heily.com/pnotify/.
 
-* Advanced configuration, allowing custom paths. This should be done
-  in the configuration file, so something like
-  "/Artists/%artist%/%album%/%trackno% %title%.%extension%" (with a
-  somewhat prettier syntax ;) would produce the current Artists
-  directory.
+
+* Advanced configuration, allowing custom paths. 
+This should be done in the configuration file, so something like
+"/Artists/%artist%/%album%/%trackno% %title%.%extension%" (with a
+somewhat prettier syntax ;) would produce the current Artists
+directory.
+
+* Internal stuff/convenience
+
+  * Add proper debugging facilities. 
+    * DEBUG macro has been improved
+
+  * Add some generic way of logging, possibly using any fuse API
+  available to do this.
+
+  * What is the correct way to crash? :) Not at all?
+
+  * Create a more generic way of mapping a pathname to a file. There
+  are some path lookups we'd like to be able to run more than once.
+
