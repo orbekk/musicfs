@@ -7,3 +7,26 @@ TODO for the nearest future:
 - When calling open, buffer the file descriptors, so we don't open them each
   time, and just read from the filedescriptor. We could behave more fs-like by
   having lists of active nodes as an analogue to inodes in a typical filesystem.
+  - Save file descriptors in the struct passed to the open/read/... calls.
+
+
+v. 0.1
+~~~~~~
+* Better interface (the new .config is pretty good, but needs
+  improvement)
+
+* BUG: musicfs only works in debug mode. Why? Fix this!
+
+* BUG: what to do with songs without tags? The current behavior,
+  breaking badly, is probably not what we want.
+
+v. 0.2(?)
+~~~~~~~~~
+* Inotify/kqueue support for watching music directories
+  * Take a look at http://mark.heily.com/pnotify/.
+
+* Advanced configuration, allowing custom paths. This should be done
+  in the configuration file, so something like
+  "/Artists/%artist%/%album%/%trackno% %title%.%extension%" (with a
+  somewhat prettier syntax ;) would produce the current Artists
+  directory.
