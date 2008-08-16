@@ -154,8 +154,7 @@ static int mfs_open (const char *path, struct fuse_file_info *fi)
 		return (-ENOENT);
 	if (fd.fd < 0)
 		return (-EIO);
-	close(fd.fd);
-
+	fi->fh = fd.fd;
 	return (0);
 
 	/*
@@ -171,9 +170,7 @@ static int mfs_open (const char *path, struct fuse_file_info *fi)
 static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 					 struct fuse_file_info *fi)
 {
-	struct file_data fd;
-	fd.fd = -1;
-	fd.found = 0;
+	int fd;
 	size_t bytes;
 
 	DEBUG("read: path(%s) offset(%d) size(%d)\n", path, (int)offset,
@@ -188,17 +185,10 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 		return (bytes);
 	}
 
-	int status = mfs_file_data_for_path(path, &fd);
-	if (status != 0)
-		return (status);
-
-	if (!fd.found)
-		return (-ENOENT);
-	if (fd.fd < 0)
+	fd = fi->fh;
+	if (fd < 0)
 		return (-EIO);
-	lseek(fd.fd, offset, SEEK_CUR);
-	bytes = read(fd.fd, buf, size);
-	close(fd.fd);
+	bytes = read(fd, buf, size);
 	return (bytes);
 
 	/*
@@ -277,12 +267,18 @@ static int mfs_fsync(const char *path, int datasync,
 
 static int mfs_release(const char *path, struct fuse_file_info *fi)
 {
+	int fd;
+
 	DEBUG("release %s\n", path);
 
 	if (strcmp(path, "/.config") == 0) {
 		/* Reload configuration file */
 		mfs_reload_config();
 	}
+
+	fd = fi->fh;
+	if (fd >= 0)
+		close(fd);
 
 	return (0);
 }
