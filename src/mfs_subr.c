@@ -58,21 +58,17 @@ sqlite3 *handle;
  */
 char *mfs_get_home_path(const char *extra)
 {
-	int hlen, exlen = 0;
+	int hlen, exlen;
 	char *res;
 	const char *home = getenv("HOME");
 
 	hlen = strlen(home);
-	if (extra)
-		exlen = strlen(extra);
+	exlen = (extra != NULL) ? strlen(extra) : 0;
 
-	res = malloc(sizeof(char) * (hlen + exlen + 2));
-	strcpy(res, home);
-
-	if (extra) {
-		res[hlen] = '/';
-		strcpy(res + hlen + 1, extra);
-	}
+	if (exlen > 0)
+		asprintf(&res, "%s/%s", home, extra);
+	else
+		asprintf(&res, "%s", home);
 
 	return (res);
 }
@@ -399,8 +395,9 @@ mfs_scan(char *filepath)
 		sqlite3_bind_int(st, 5, year);
 
 		if (track) {
-			trackno = malloc(sizeof(char) * 9);
-			sprintf(trackno, "%02d", track);
+			asprintf(&trackno, "%02d", track);
+			if (trackno == NULL)
+				break;
 			sqlite3_bind_text(st, 6, trackno, -1, SQLITE_TRANSIENT);
 			free(trackno);
 		} else {
@@ -476,6 +473,9 @@ mfs_escape_sqlstring(const char *str)
 
 	int len = strlen(str) + 1;
 	escaped = malloc(sizeof(char) * len);
+
+	if (escaped == NULL)
+		return (NULL);
 
 	p = escaped;
 	q = str;
