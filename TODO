@@ -34,6 +34,12 @@ This should be done in the configuration file, so something like
 somewhat prettier syntax ;) would produce the current Artists
 directory.
 
+* Implement support for changing tags by moving a file around in the directory
+  tree.
+* Implement support for changing encoding my changing file name.
+* Implement support for encoding/decoding when reading the data? (embedded
+  decoder in the file system, removing the need for encoder support in the
+  player).
 * Internal stuff/convenience
 
   * Add proper debugging facilities. 
