@@ -144,6 +144,7 @@ static int mfs_open (const char *path, struct fuse_file_info *fi)
 	if (status != 0)
 		return status;
 	fd = open(realpath, O_RDONLY);
+	free(realpath);
 	if (fd < 0)
 		return (-errno);
 	fi->fh = (uint64_t)fd;
@@ -260,7 +261,7 @@ static int mfs_release(const char *path, struct fuse_file_info *fi)
 	}
 
 	fd = (int)fi->fh;
-	if (fd >= 0)
+	if (fd > 0)
 		close(fd);
 
 	return (0);
