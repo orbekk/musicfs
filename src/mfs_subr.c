@@ -559,22 +559,17 @@ mfs_lookup_finish(struct lookuphandle *lh)
 }
 
 /*
- * Build a file_data struct for a path.
+ * Return the realpath given a path in the musicfs tree.
  *
- * data should be a pointer to a file handle
- * returns 0 on success
+ * Returns pointer to real path or NULL if not found.
  */
-int
-mfs_file_data_for_path(const char *path, void *data) {
-	DEBUG("getting file data for %s\n", path);
-	struct file_data *fd;
-	fd = (struct file_data *)data;
+int 
+mfs_realpath(const char *path, char **realpath) {
+	DEBUG("getting real path for %s\n", path);
 	struct lookuphandle *lh;
 	char *artist, *album, *title;
 
 	lh = NULL;
-	fd->fd = -1;
-	fd->found = 0;
 
 	/* Open a specific track. */
 	if (strncmp(path, "/Tracks", 7) == 0) {
@@ -583,7 +578,7 @@ mfs_file_data_for_path(const char *path, void *data) {
 			title = mfs_gettoken(path, 2);
 			if (title == NULL)
 				break;
-			lh = mfs_lookup_start(0, fd, mfs_lookup_open,
+			lh = mfs_lookup_start(0, realpath, mfs_lookup_path,
 			    "SELECT filepath FROM song "
 			    "WHERE (artistname||' - '||title||'.'||extension) LIKE ?");
 			if (lh == NULL)
@@ -602,7 +597,7 @@ mfs_file_data_for_path(const char *path, void *data) {
 			title = mfs_gettoken(path, 3);
 			if (title == NULL)
 				break;
-			lh = mfs_lookup_start(0, fd, mfs_lookup_open,
+			lh = mfs_lookup_start(0, realpath, mfs_lookup_path,
 			    "SELECT filepath FROM song "
 			    "WHERE (title||'.'||extension) LIKE ? AND "
 			    "album LIKE ?");
@@ -624,7 +619,7 @@ mfs_file_data_for_path(const char *path, void *data) {
 			if (!(artist && album && title)) {
 				break;
 			}
-			lh = mfs_lookup_start(0, fd, mfs_lookup_open,
+			lh = mfs_lookup_start(0, realpath, mfs_lookup_path,
 			    "SELECT filepath FROM song WHERE artistname LIKE ? AND "
 			    "album LIKE ? AND "
 			    "(LTRIM(track||' ')||title||'.'||extension) LIKE ?");
@@ -642,7 +637,8 @@ mfs_file_data_for_path(const char *path, void *data) {
 	if (lh) {
 		mfs_lookup_finish(lh);
 	}
-
+	if (*realpath == NULL)
+		return (-ENOMEM);
 	return 0;
 }
 
@@ -846,31 +842,15 @@ mfs_lookup_list(void *data, const char *str)
 }
 
 /*
- * Lookup a file and open it if found.
+ * Lookup the real path of a file.
  */
 int
-mfs_lookup_open(void *data, const char *str)
+mfs_lookup_path(void *data, const char *str)
 {
-	struct file_data *fd;
 
-	fd = (struct file_data *)data;
-	fd->fd = open(str, O_RDONLY);
-	fd->found = 1;
-	return (1);
-}
-
-/*
- * Stat a file.
- * XXX: watch out for duplicates, we might stat more than once.
- */
-int
-mfs_lookup_stat(void *data, const char *str)
-{
-	struct stat *st;
-
-	st = (struct stat *)data;
-	if (stat(str, st) < 0)
-		return (0);
+	char **path;
+	path = data;
+	*path = strdup(str);
 	return (1);
 }
 

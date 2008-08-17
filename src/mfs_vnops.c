@@ -41,9 +41,7 @@
 
 static int mfs_getattr (const char *path, struct stat *stbuf)
 {
-	struct file_data fd;
-	fd.fd = -1;
-	fd.found = 0;
+	char *realpath;
 
 	int status = 0;
 	memset (stbuf, 0, sizeof (struct stat));
@@ -71,19 +69,16 @@ static int mfs_getattr (const char *path, struct stat *stbuf)
 		return 0;
 
 	case MFS_FILE:
-		status = mfs_file_data_for_path(path, &fd);
+		realpath = NULL;
+		status = mfs_realpath(path, &realpath);
 		if (status != 0)
-			return (status);
-
-		if (!fd.found)
-			return (-ENOENT);
-		if (fd.fd < 0)
-			return (-EIO);
-
-		if (fstat(fd.fd, stbuf) == 0)
-			return (0);
-		else
-			return (-ENOENT);
+			return status;
+		if (stat(realpath, stbuf) != 0) {
+			free(realpath);
+			return -ENOENT;
+		}
+		free(realpath);
+		return 0;
 
 	case MFS_NOTFOUND:
 	default:
@@ -139,32 +134,20 @@ static int mfs_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int mfs_open (const char *path, struct fuse_file_info *fi)
 {
-	struct file_data fd;
-	fd.fd = -1;
-	fd.found = 0;
+	char *realpath;
+	int fd, status;
 
 	if (strcmp(path, "/.config") == 0)
 		return (0);
 
-	int status = mfs_file_data_for_path(path, &fd);
+	status = mfs_realpath(path, &realpath);
 	if (status != 0)
-		return (status);
-
-	if (!fd.found)
-		return (-ENOENT);
-	if (fd.fd < 0)
-		return (-EIO);
-	fi->fh = fd.fd;
+		return status;
+	fd = open(realpath, O_RDONLY);
+	if (fd < 0)
+		return (-errno);
+	fi->fh = (uint64_t)fd;
 	return (0);
-
-	/*
-	 * 1. Have a lookup cache for names?.
-	 *    Parse Genre, Album, Artist etc.
-	 * 2. Find MP3s that match. XXX what do we do with duplicates? just
-	 *    return the first match?
-	 * 3. Put the mnode of the mp3 in our cache.
-	 * 4. Signal in mnode that the mp3 is being read?
-	 */
 }
 
 static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
@@ -185,7 +168,7 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 		return (bytes);
 	}
 
-	fd = fi->fh;
+	fd = (int)fi->fh;
 	if (fd < 0)
 		return (-EIO);
 	bytes = read(fd, buf, size);
@@ -276,7 +259,7 @@ static int mfs_release(const char *path, struct fuse_file_info *fi)
 		mfs_reload_config();
 	}
 
-	fd = fi->fh;
+	fd = (int)fi->fh;
 	if (fd >= 0)
 		close(fd);
 
