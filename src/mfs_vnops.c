@@ -54,6 +54,8 @@ static int mfs_getattr (const char *path, struct stat *stbuf)
 
 	if (strcmp(path, "/.config") == 0) {
 		char *mfsrc = mfs_get_home_path(".mfsrc");
+		if (mfsrc == NULL)
+			return (-ENOMEM);
 		int res = stat(mfsrc, stbuf);
 		DEBUG("stat result for %s: %d\n", mfsrc, res);
 		free(mfsrc);
@@ -161,6 +163,8 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 		  (int)size);
 	if (strcmp(path, "/.config") == 0) {
 		char *mfsrc = mfs_get_home_path(".mfsrc");
+		if (mfsrc == NULL)
+			return (-ENOMEM);
 		int fd = open(mfsrc, O_RDONLY);
 		free(mfsrc);
 		lseek(fd, offset, SEEK_CUR);
@@ -192,6 +196,8 @@ static int mfs_write(const char *path, const char *buf, size_t size,
 
 	if (strcmp(path, "/.config") == 0) {
 		char *mfsrc = mfs_get_home_path(".mfsrc");
+		if (mfsrc == NULL)
+			return (-ENOMEM);
 		int fd = open(mfsrc, O_WRONLY);
 		free(mfsrc);
 		lseek(fd, offset, SEEK_CUR);
@@ -223,6 +229,8 @@ static int mfs_truncate(const char *path, off_t size)
 
 	if (strcmp(path, "/.config") == 0) {
 		mfsrc = mfs_get_home_path(".mfsrc");
+		if (mfsrc == NULL)
+			return (-ENOMEM);
 		res = truncate(mfsrc, size);
 		DEBUG("truncated %s with result: %d\n", mfsrc, res)
 		free(mfsrc);
@@ -275,6 +283,8 @@ static int mfs_chmod(const char *path, mode_t mode)
 	DEBUG("chmod %s, %d\n", path, (int)mode);
 	if (strcmp(path, "/.config") == 0) {
 		mfsrc = mfs_get_home_path(".mfsrc");
+		if (mfsrc == NULL)
+			return (-ENOMEM);
 		ret = chmod(mfsrc, mode);
 		free(mfsrc);
 		return (ret);
@@ -292,6 +302,8 @@ static int mfs_utimens(const char *path, const struct timespec tv[2])
 	
 	if (strcmp(path, "/.config") == 0) {
 		mfsrc = mfs_get_home_path(".mfsrc");
+		if (mfsrc == NULL)
+			return (-ENOMEM);
 		ret = 0; /* utimes(mfsrc, tval); */
 		free(mfsrc);
 		return (ret);
