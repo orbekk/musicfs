@@ -44,6 +44,7 @@ directory.
 * Implement support for encoding/decoding when reading the data? (embedded
   decoder in the file system, removing the need for encoder support in the
   player).
+* Support for looking up tags to CDDB or something like that.
 * Internal stuff/convenience
 
   * Add proper debugging facilities. 

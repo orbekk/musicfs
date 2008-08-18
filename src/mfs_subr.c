@@ -77,7 +77,7 @@ char *mfs_get_home_path(const char *extra)
  * Insert a musicpath into the database.
  */
 int
-mfs_insert_path(char *path, sqlite3 *handle)
+mfs_insert_path(const char *path, sqlite3 *handle)
 {
 	int res;
 	sqlite3_stmt *st;
@@ -87,7 +87,7 @@ mfs_insert_path(char *path, sqlite3 *handle)
 	    "SELECT path FROM path WHERE path LIKE ?",
 	    -1, &st, NULL);
 	if (res != SQLITE_OK) {
-		warnx("Error preparing stamtement: %s\n",
+		DEBUG("Error preparing statement: %s\n",
 		    sqlite3_errmsg(handle));
 		return (-1);
 	}
@@ -102,7 +102,7 @@ mfs_insert_path(char *path, sqlite3 *handle)
 		    "INSERT INTO path(path) VALUES(?)",
 		    -1, &st, NULL);
 		if (res != SQLITE_OK) {
-			warnx("Error preparing stamtement: %s\n",
+			DEBUG("Error preparing stamtement: %s\n",
 				  sqlite3_errmsg(handle));
 			return (-1);
 		}
@@ -110,7 +110,7 @@ mfs_insert_path(char *path, sqlite3 *handle)
 		res = sqlite3_step(st);
 		sqlite3_finalize(st);
 		if (res != SQLITE_DONE) {
-			warnx("Error inserting into database: %s\n",
+			DEBUG("Error inserting into database: %s\n",
 			    sqlite3_errmsg(handle));
 			return (-1);
 		}
@@ -133,14 +133,14 @@ mfs_reload_config()
 	FILE *f = fopen(mfsrc, "r");
 
 	if (f == NULL) {
-		warnx("Couldn't open configuration file %s\n",
+		DEBUG("Couldn't open configuration file %s\n",
 		    mfsrc);
 		return (-1);
 	}
 
 	res = sqlite3_open(db_path, &handle);
 	if (res) {
-		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
+		DEBUG("Can't open database: %s\n", sqlite3_errmsg(handle));
 		sqlite3_close(handle);
 		return (-1);
 	}
@@ -178,7 +178,7 @@ mfs_initscan()
 	/* Open database. */
 	error = sqlite3_open(db_path, &handle);
 	if (error) {
-		warnx("Can't open database: %s\n", sqlite3_errmsg(handle));
+		DEBUG("Can't open database: %s\n", sqlite3_errmsg(handle));
 		sqlite3_close(handle);
 		return (-1);
 	}
@@ -238,7 +238,7 @@ traverse_hierarchy(const char *dirpath, traverse_fn_t fileop)
 
 /* Scan the music initially. */
 void
-mfs_scan(char *filepath)
+mfs_scan(const char *filepath)
 {
 	TagLib_File *file;
 	TagLib_Tag *tag;
@@ -251,16 +251,18 @@ mfs_scan(char *filepath)
 	
 	file = taglib_file_new(filepath);
 	/* XXX: errmsg. */
-	if (file == NULL)
+	if (file == NULL) {
+		DEBUG("Unable to open file %s\n", filepath);
 		return;
+	}
 	tag = taglib_file_tag(file);
 	if (tag == NULL) {
-		printf("error!\n");
+		DEBUG("Error getting tag from %s\n", filepath);
 		return;
 	}
 
 	if (stat(filepath, &fstat) < 0) {
-		perror("stat");
+		DEBUG("Error getting file info: %s\n", strerror(errno));
 		return;
 	}
 
@@ -275,7 +277,7 @@ mfs_scan(char *filepath)
 		ret = sqlite3_prepare_v2(handle, "SELECT * FROM artist WHERE "
 		    "name=?", -1, &st, NULL);
 		if (ret != SQLITE_OK) {
-			warnx("Error preparing statement: %s\n",
+			DEBUG("Error preparing statement: %s\n",
 			    sqlite3_errmsg(handle));
 			break;
 		}
@@ -289,7 +291,7 @@ mfs_scan(char *filepath)
 		ret = sqlite3_prepare_v2(handle, "INSERT INTO artist(name) "
 		    "VALUES(?)", -1, &st, NULL);
 		if (ret != SQLITE_OK) {
-			warnx("Error preparing statement: %s\n",
+			DEBUG("Error preparing statement: %s\n",
 			    sqlite3_errmsg(handle));
 			break;
 		}
@@ -297,7 +299,7 @@ mfs_scan(char *filepath)
 		ret = sqlite3_step(st);
 		sqlite3_finalize(st);
 		if (ret != SQLITE_DONE) {
-			warnx("Error inserting into database: %s\n",
+			DEBUG("Error inserting into database: %s\n",
 			    sqlite3_errmsg(handle));
 			break;
 		}
@@ -312,7 +314,7 @@ mfs_scan(char *filepath)
 		ret = sqlite3_prepare_v2(handle, "SELECT * FROM genre WHERE "
 		    "name=?", -1, &st, NULL);
 		if (ret != SQLITE_OK) {
-			warnx("Error preparing statement: %s\n",
+			DEBUG("Error preparing statement: %s\n",
 			    sqlite3_errmsg(handle));
 			break;
 		}
@@ -326,7 +328,7 @@ mfs_scan(char *filepath)
 		ret = sqlite3_prepare_v2(handle, "INSERT INTO genre(name) "
 		    "VALUES(?)", -1, &st, NULL);
 		if (ret != SQLITE_OK) {
-			warnx("Error preparing statement: %s\n",
+			DEBUG("Error preparing statement: %s\n",
 			    sqlite3_errmsg(handle));
 			break;
 		}
@@ -334,7 +336,7 @@ mfs_scan(char *filepath)
 		ret = sqlite3_step(st);
 		sqlite3_finalize(st);
 		if (ret != SQLITE_DONE) {
-			warnx("Error inserting into database: %s\n",
+			DEBUG("Error inserting into database: %s\n",
 			    sqlite3_errmsg(handle));
 			break;
 		}
@@ -363,7 +365,7 @@ mfs_scan(char *filepath)
 		    " AND song.album=?",
 		    -1, &st, NULL);
 		if (ret != SQLITE_OK) {
-			warnx("Error preparing statement: %s\n",
+			DEBUG("Error preparing statement: %s\n",
 			    sqlite3_errmsg(handle));
 			break;
 		}
@@ -384,7 +386,7 @@ mfs_scan(char *filepath)
 		    "mtime, extension) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		    -1, &st, NULL);
 		if (ret != SQLITE_OK) {
-			warnx("Error preparing insert statement: %s\n",
+			DEBUG("Error preparing insert statement: %s\n",
 			    sqlite3_errmsg(handle));
 			break;
 		}
@@ -410,7 +412,7 @@ mfs_scan(char *filepath)
 		ret = sqlite3_step(st);
 		sqlite3_finalize(st);
 		if (ret != SQLITE_DONE) {
-			warnx("Error inserting into database: %s\n",
+			DEBUG("Error inserting into database: %s\n",
 			    sqlite3_errmsg(handle));
 			break;
 		}
@@ -438,7 +440,7 @@ mfs_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 	/* Open database. */
 	error = sqlite3_open(db_path, &lh->handle);
 	if (error) {
-		warnx("Can't open database: %s\n", sqlite3_errmsg(lh->handle));
+		DEBUG("Can't open database: %s\n", sqlite3_errmsg(lh->handle));
 		sqlite3_close(lh->handle);
 		free(lh);
 		return (NULL);

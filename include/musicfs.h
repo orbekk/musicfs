@@ -30,7 +30,7 @@ int	mfs_initscan();
  * Functions traversing the underlying filesystem and do operations on the
  * files, for instance scanning the collection.
  */
-typedef void traverse_fn_t(char *);
+typedef void traverse_fn_t(const char *);
 void traverse_hierarchy(const char *, traverse_fn_t);
 traverse_fn_t mfs_scan;
 
@@ -42,7 +42,7 @@ struct filler_data {
 	fuse_fill_dir_t filler;
 };
 
-enum lookup_datatype { LIST_DATATYPE_STRING, LIST_DATATYPE_INT };
+enum lookup_datatype { LIST_DATATYPE_STRING = 1, LIST_DATATYPE_INT };
 
 enum mfs_filetype { MFS_NOTFOUND, MFS_FILE, MFS_DIRECTORY };
 
