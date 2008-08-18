@@ -10,7 +10,12 @@ v. 0.1
   * -s (single thread) does not
 
 * BUG: what to do with songs without tags? The current behavior,
-breaking badly, is probably not what we want.
+breaking badly, is probably not what we want. Suggestions:
+  * We put all songs not having complete tags in an Unsorted folder, with the
+    real filename as the name. Perhaps having a flag in the database tables
+    indicating that the information is not complete.
+  * We avoid including them in the database at all, which is what we basically
+    do now, but just a bit more fool proof perhaps.
 
 * Do file descriptors "the right way", using the provided fuse_file_info
 struct passed to the open/read/write/release calls.
