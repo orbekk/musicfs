@@ -897,8 +897,6 @@ mfs_get_filetype(const char *path) {
 			return (MFS_DIRECTORY);
 		case 4:
 			return (MFS_FILE);
-		default:
-			return (MFS_NOTFOUND);
 		}
 	} else if (strncmp(path, "/Albums", 7) == 0) {
 		switch (tokens) {
@@ -907,8 +905,6 @@ mfs_get_filetype(const char *path) {
 			return (MFS_DIRECTORY);
 		case 3:
 			return (MFS_FILE);
-		default:
-			return (MFS_NOTFOUND);
 		}
 	} else if (strncmp(path, "/Tracks", 7) == 0) {
 		switch (tokens) {
@@ -916,10 +912,8 @@ mfs_get_filetype(const char *path) {
 			return (MFS_DIRECTORY);
 		case 2:
 			return (MFS_FILE);
-		default:
-			return (MFS_NOTFOUND);
 		}
-	} else {
-		return (MFS_NOTFOUND);
 	}
+
+	return (-1);
 }

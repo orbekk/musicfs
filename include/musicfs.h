@@ -44,7 +44,7 @@ struct filler_data {
 
 enum lookup_datatype { LIST_DATATYPE_STRING = 1, LIST_DATATYPE_INT };
 
-enum mfs_filetype { MFS_NOTFOUND, MFS_FILE, MFS_DIRECTORY };
+enum mfs_filetype { MFS_FILE, MFS_DIRECTORY };
 
 /* A lookup functions returns 0 if it's finished. */
 typedef int lookup_fn_t(void *, const char *);
