@@ -27,6 +27,10 @@ breaking badly, is probably not what we want. Suggestions:
 
   UPDATE: I think this is fixed now.
 
+* We should implement flush and similar calls we don't currently implement.
+  Under some circumstances, high load can force the closing of files or
+  something in a similar manner, and we should handle this properly, or else the
+  media player will probably stop playback.
 
 v. 0.2(?)
 ~~~~~~~~~
