@@ -42,8 +42,7 @@ struct filler_data {
 	fuse_fill_dir_t filler;
 };
 
-#define LIST_DATATYPE_STRING 1
-#define LIST_DATATYPE_INT 2
+enum lookup_datatype { LIST_DATATYPE_STRING, LIST_DATATYPE_INT };
 
 enum mfs_filetype { MFS_NOTFOUND, MFS_FILE, MFS_DIRECTORY };
 
@@ -59,7 +58,8 @@ lookup_fn_t mfs_lookup_load_path;
 struct lookuphandle;
 
 struct lookuphandle	*mfs_lookup_start(int, void *, lookup_fn_t *, const char *);
-void			 mfs_lookup_insert(struct lookuphandle *, void *, int);
+void			 mfs_lookup_insert(struct lookuphandle *, void *,
+			     enum lookup_datatype);
 void			 mfs_lookup_finish(struct lookuphandle *);
 
 void	 mfs_lookup_artist(const char *, struct filler_data *);

@@ -497,7 +497,8 @@ mfs_escape_sqlstring(const char *str)
  * be dynamically allocated, and will be free'd when mfs_lookup_finish is called!
  */
 void
-mfs_lookup_insert(struct lookuphandle *lh, void *data, int type)
+mfs_lookup_insert(struct lookuphandle *lh, void *data,
+    enum lookup_datatype type)
 {
 	char *str, *escaped;
 	int val;
