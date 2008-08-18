@@ -5,8 +5,7 @@ v. 0.1
 * Better interface (the new .config is pretty good, but needs
   improvement)
 
-* BUG: musicfs only works in debug mode. Why? Fix this! It does work in normal
-  mode on FreeBSD.
+* BUG: musicfs only works in debug mode. Why? Fix this!
   * -f (foreground mode) also works
   * -s (single thread) does not
 
