@@ -62,6 +62,8 @@ char *mfs_get_home_path(const char *extra)
 	char *res;
 	const char *home = getenv("HOME");
 
+	if (home == NULL)
+		return (NULL);
 	hlen = strlen(home);
 	exlen = (extra != NULL) ? strlen(extra) : 0;
 

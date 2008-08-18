@@ -42,6 +42,7 @@
 static int mfs_getattr (const char *path, struct stat *stbuf)
 {
 	char *realpath;
+	int res;
 
 	int status = 0;
 	memset (stbuf, 0, sizeof (struct stat));
@@ -56,7 +57,7 @@ static int mfs_getattr (const char *path, struct stat *stbuf)
 		char *mfsrc = mfs_get_home_path(".mfsrc");
 		if (mfsrc == NULL)
 			return (-ENOMEM);
-		int res = stat(mfsrc, stbuf);
+		res = stat(mfsrc, stbuf);
 		DEBUG("stat result for %s: %d\n", mfsrc, res);
 		free(mfsrc);
 		return (res);
@@ -75,17 +76,11 @@ static int mfs_getattr (const char *path, struct stat *stbuf)
 		status = mfs_realpath(path, &realpath);
 		if (status != 0)
 			return status;
-		if (stat(realpath, stbuf) != 0) {
-			free(realpath);
-			return -ENOENT;
-		}
+		res = stat(realpath, stbuf);
 		free(realpath);
-		return 0;
-
-	case MFS_NOTFOUND:
-	default:
-		return -ENOENT;
+		return (res);
 	}
+	return (-ENOENT);
 }
 
 
