@@ -5,13 +5,6 @@ v. 0.1
 * Better interface (the new .config is pretty good, but needs
   improvement)
 
-* BUG: musicfs only works in debug mode. 
-  * -f (foreground mode) also works
-  * -s (single thread) does not
-
-  Update: This works if I disable DEBUGGING, probably because of some permission
-  problems when using file I/O in not debugging mode.
-
 * BUG: what to do with songs without tags? The current behavior,
 breaking badly, is probably not what we want. Suggestions:
   * We put all songs not having complete tags in an Unsorted folder, with the
@@ -19,8 +12,6 @@ breaking badly, is probably not what we want. Suggestions:
     indicating that the information is not complete.
   * We avoid including them in the database at all, which is what we basically
     do now, but just a bit more fool proof perhaps.
-
-* Missing .config (this is a matter of style, not performance)
 
 * BUG: something is wrong with the offset when reading media files.
   "Ogg : Page out not synced, we skip some bytes" from mplayer.
@@ -65,3 +56,11 @@ directory.
   * Create a more generic way of mapping a pathname to a file. There
   are some path lookups we'd like to be able to run more than once.
 
+* BUG: musicfs only works in debug mode. 
+  * -f (foreground mode) also works
+  * -s (single thread) does not
+
+  Update: This works if I disable DEBUGGING, probably because of some permission
+  problems when using file I/O in not debugging mode.
+
+* File handle stuff for .config (this is a matter of style, not performance)
