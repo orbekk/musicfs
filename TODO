@@ -17,13 +17,12 @@ breaking badly, is probably not what we want. Suggestions:
   * We avoid including them in the database at all, which is what we basically
     do now, but just a bit more fool proof perhaps.
 
-* Do file descriptors "the right way", using the provided fuse_file_info
-struct passed to the open/read/write/release calls.
+* Missing .config (this is a matter of style, not performance)
 
-  * Missing .config (this is a matter of style, not performance)
+* BUG: something is wrong with the offset when reading media files.
+  "Ogg : Page out not synced, we skip some bytes" from mplayer.
 
-  * BUG: something is wrong with the offset when reading media files.
-    "Ogg : Page out not synced, we skip some bytes" from mplayer
+  UPDATE: I think this is fixed now.
 
 
 v. 0.2(?)
