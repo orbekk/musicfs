@@ -66,7 +66,7 @@ static int mfs_getattr (const char *path, struct stat *stbuf)
 	enum mfs_filetype type = mfs_get_filetype(path);
 	switch (type) {
 	case MFS_DIRECTORY:
-		stbuf->st_mode = S_IFDIR | 0444;
+		stbuf->st_mode = S_IFDIR | 0555;
 		stbuf->st_nlink = 1;
 		stbuf->st_size = 12;
 		return 0;
