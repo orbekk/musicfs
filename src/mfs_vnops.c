@@ -167,7 +167,7 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 			return (-ENOMEM);
 		int fd = open(mfsrc, O_RDONLY);
 		free(mfsrc);
-		lseek(fd, offset, SEEK_CUR);
+		lseek(fd, offset, SEEK_SET);
 		bytes = read(fd, buf, size);
 		close(fd);
 		return (bytes);
@@ -176,6 +176,7 @@ static int mfs_read (const char *path, char *buf, size_t size, off_t offset,
 	fd = (int)fi->fh;
 	if (fd < 0)
 		return (-EIO);
+	lseek(fd, offset, SEEK_SET);
 	bytes = read(fd, buf, size);
 	return (bytes);
 
@@ -200,7 +201,7 @@ static int mfs_write(const char *path, const char *buf, size_t size,
 			return (-ENOMEM);
 		int fd = open(mfsrc, O_WRONLY);
 		free(mfsrc);
-		lseek(fd, offset, SEEK_CUR);
+		lseek(fd, offset, SEEK_SET);
 		bytes = write(fd, buf, size);
 		close(fd);
 		return (bytes);
