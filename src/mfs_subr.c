@@ -238,6 +238,13 @@ traverse_hierarchy(const char *dirpath, traverse_fn_t fileop)
 	closedir(dirp);
 }
 
+/* Check if a string is empty (either NULL or "") */
+int
+mfs_empty(const char *str)
+{
+	return (str == NULL || strlen(str) == 0);
+}
+
 /* Scan the music initially. */
 void
 mfs_scan(const char *filepath)
@@ -273,7 +280,7 @@ mfs_scan(const char *filepath)
 	/* First insert artist if we have it. */
 	do {
 		artist = taglib_tag_artist(tag);
-		if (artist == NULL)
+		if (mfs_empty(artist))
 			break;
 		/* First find out if it exists. */
 		ret = sqlite3_prepare_v2(handle, "SELECT * FROM artist WHERE "
@@ -310,7 +317,7 @@ mfs_scan(const char *filepath)
 	/* Insert genre if it doesn't exist. */
 	do {
 		genre = taglib_tag_genre(tag);
-		if (genre == NULL)
+		if (mfs_empty(genre))
 			break;
 		/* First find out if it exists. */
 		ret = sqlite3_prepare_v2(handle, "SELECT * FROM genre WHERE "
@@ -357,8 +364,8 @@ mfs_scan(const char *filepath)
 			/* Drop the '.' */
 			extension++;
 		
-		if (title == NULL || genre == NULL || artist == NULL ||
-		    album == NULL)
+		if (mfs_empty(title) || mfs_empty(genre) || mfs_empty(artist) ||
+		    mfs_empty(album))
 			break;
 
 		/* First find out if it exists. */
@@ -400,7 +407,7 @@ mfs_scan(const char *filepath)
 
 		if (track) {
 			asprintf(&trackno, "%02d", track);
-			if (trackno == NULL)
+			if (mfs_empty(trackno))
 				break;
 			sqlite3_bind_text(st, 6, trackno, -1, SQLITE_TRANSIENT);
 			free(trackno);

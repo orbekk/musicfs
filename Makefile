@@ -1,4 +1,4 @@
-CFLAGS  = -Wall -std=c99 -D_BSD_SOURCE -I/usr/local/include/ -Iinclude/ \
+CFLAGS  = -Wall -std=c99 -D_BSD_SOURCE -I/usr/local/include/ -Iinclude/ -g \
 	`pkg-config fuse --cflags` `pkg-config taglib --cflags` -DDEBUGGING
 
 LD_ADD  = -L/usr/local/lib -lsqlite3 -ltag_c \
