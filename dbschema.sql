@@ -26,5 +26,6 @@ CREATE TABLE genre (
 
 CREATE TABLE path (
 	path varchar(255),
+	active integer NOT NULL,
 	PRIMARY KEY(path)
 );

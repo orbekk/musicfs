@@ -101,7 +101,7 @@ mfs_insert_path(const char *path, sqlite3 *handle)
 		DEBUG("Inserting path '%s' to paths\n", path);
 		/* Doesn't exist. Insert it */
 		res = sqlite3_prepare_v2(handle,
-		    "INSERT INTO path(path) VALUES(?)",
+		    "INSERT INTO path(path, active) VALUES(?,1)",
 		    -1, &st, NULL);
 		if (res != SQLITE_OK) {
 			DEBUG("Error preparing stamtement: %s\n",
@@ -115,6 +115,22 @@ mfs_insert_path(const char *path, sqlite3 *handle)
 			DEBUG("Error inserting into database: %s\n",
 			    sqlite3_errmsg(handle));
 			return (-1);
+		}
+	}
+	else {
+		/* Path already in database, just activate it */
+		res = sqlite3_prepare_v2(handle, "UPDATE path SET active = 1 "
+		    "WHERE path LIKE ?", -1, &st, NULL);
+		if (res != SQLITE_OK) {
+			DEBUG("Error preparing statement: %s\n",
+			    sqlite3_errmsg(handle));
+			return (-1);
+		}
+		sqlite3_bind_text(st, 1, path, -1, SQLITE_TRANSIENT);
+		res = sqlite3_step(st);
+		sqlite3_finalize(st);
+		if (res != SQLITE_DONE) {
+			DEBUG("Error activating path '%s'\n", path);
 		}
 	}
 	return (0);
@@ -132,6 +148,7 @@ mfs_reload_config()
 	char line[4096];
 	struct lookuphandle *lh;
 	sqlite3 *handle;
+	sqlite3_stmt *st;
 	FILE *f = fopen(mfsrc, "r");
 
 	if (f == NULL) {
@@ -147,7 +164,19 @@ mfs_reload_config()
 		return (-1);
 	}
 
-	/* XXX: Just adding the paths for now. queue.h for the rest*/
+	/* Deactivate all paths */
+	res = sqlite3_prepare_v2(handle, "UPDATE path SET active = 0",
+	    -1, &st, NULL);
+	if (res != SQLITE_OK) {
+		DEBUG("Error preparing statement: %s\n",
+			  sqlite3_errmsg(handle));
+		return (-1);
+	}
+	res = sqlite3_step(st);
+	sqlite3_finalize(st);
+	if (res != SQLITE_DONE) {
+		DEBUG("Error deactivating paths.\n");
+	}
 
 	while (fgets(line, 4096, f) != NULL) {
 		len = strlen(line);
