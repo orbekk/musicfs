@@ -5,10 +5,12 @@ v. 0.1
 * Better interface (the new .config is pretty good, but needs
   improvement)
 
-* We should implement flush and similar calls we don't currently implement.
+* [FIXED] We should implement flush and similar calls we don't currently implement.
   Under some circumstances, high load can force the closing of files or
   something in a similar manner, and we should handle this properly, or else the
   media player will probably stop playback.
+  * flush and fsync have been implemented, but is not required to do anything
+    since we have reading only currently, so we will have to extend them later.
 
 - [FIXED] BUG: what to do with songs without tags? 
   * This has been improved to check if the string is actually empty,

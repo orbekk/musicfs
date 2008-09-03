@@ -238,19 +238,31 @@ static int mfs_truncate(const char *path, off_t size)
 
 static int mfs_flush(const char *path, struct fuse_file_info *fi)
 {
+	int fd;
+
 	DEBUG("flushing path %s\n", path);
 	if (strcmp(path, "/.config") == 0) {
 		return (0);
 	}
 
-	return (-1);
+	fd = (int)fi->fh;
+	/* Fd is not valid, return flush error. */
+	if (fd < 0)
+		return (-ENOENT);
+	return (0);
 }
 
 static int mfs_fsync(const char *path, int datasync,
 					 struct fuse_file_info *fi)
 {
+	int fd;
+
 	DEBUG("fsync path %s\n", path);
-	return (0);
+	fd = (int)fi->fh;
+	/* Fd is not valid, return fsync error. */
+	if (fd < 0)
+		return (-ENOENT);
+	return (fsync(fd));
 }
 
 static int mfs_release(const char *path, struct fuse_file_info *fi)
@@ -330,6 +342,7 @@ static struct fuse_operations mfs_ops = {
 	.mknod      = mfs_mknod,
 	.create     = mfs_create,
 	.truncate   = mfs_truncate,
+	.flush      = mfs_flush,
 	.fsync      = mfs_fsync,
 	.chmod      = mfs_chmod,
 	.release    = mfs_release,
