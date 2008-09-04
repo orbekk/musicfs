@@ -375,11 +375,21 @@ mfs_run(int argc, char **argv)
 		return (-1);
 	}
 
-	struct fuse_args args = FUSE_ARGS_INIT (argc, argv);
+	/* Make a copy of the arguments */
+	char **argv_ = malloc(sizeof(char*) * (argc+1));
+	for (int i = 0; i < argc; i++)
+			asprintf(argv_+i, argv[i]);
+	argv_[argc] = NULL;
+
+	struct fuse_args args = { argc, argv_, 1 };
+
+	/* Until we fix some bugs, these are mandatory */
+	fuse_opt_add_arg(&args, "-s");
+	fuse_opt_add_arg(&args, "-d");
 
 	if (fuse_opt_parse(&args, NULL, NULL, musicfs_opt_proc) != 0)
 		exit (1);
-		
+
 	mfs_initscan();
 
 	ret = 0;
