@@ -16,6 +16,6 @@ EOF
 
 echo "Initial configuration finished. Run"
 echo
-echo "  $ ./musicfs -d <mountpoint>"
+echo "  $ ./musicfs <mountpoint>"
 echo
 echo "to start musicfs, and follow the instructions in <mountpoint>/.config"
