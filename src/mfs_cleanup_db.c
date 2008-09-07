@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
+/* -*- Mode: C; tab-width: 8; indent-tabs-mode: t; c-basic-offset: 8 -*- */
 
 /*
  * Musicfs is a FUSE module implementing a media filesystem in userland.
@@ -29,7 +29,7 @@
 void
 mfs_delete_from_path(sqlite3 *handle, const char *path) {
 	sqlite3_stmt *st;
-    int res;
+	int res;
 	
 	res = sqlite3_prepare_v2(handle, "DELETE FROM song WHERE "
 	    "filepath LIKE (?||'%')", -1, &st, NULL);
@@ -60,7 +60,8 @@ void
 mfs_cleanup_db(sqlite3 *handle)
 {
 	DEBUG("cleaning up db\n");
-	/* sqlite doesn't support deleting from multiple tables at the same time :-( */
+	/* sqlite doesn't support deleting from multiple tables at the
+	   same time :-( */
 	sqlite3_stmt *st;
 	int res;
 	const char *path;
