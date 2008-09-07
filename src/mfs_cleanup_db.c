@@ -1,3 +1,5 @@
+/* -*- Mode: C; tab-width: 4; indent-tabs-mode: t; c-basic-offset: 4 -*- */
+
 /*
  * Musicfs is a FUSE module implementing a media filesystem in userland.
  * Copyright (C) 2008  Ulf Lilleengen, Kjetil Ørbekk
@@ -25,6 +27,29 @@
 #include <musicfs.h>
 
 extern char *db_path;
+
+void
+mfs_delete_from_path(sqlite3 *handle, const char *path) {
+	sqlite3_stmt *st;
+    int res;
+	
+	res = sqlite3_prepare_v2(handle, "DELETE FROM song WHERE "
+	    "filepath LIKE (?||'%')", -1, &st, NULL);
+	if (res != SQLITE_OK) {
+		DEBUG("Error preparing statement: %s\n",
+		    sqlite3_errmsg(handle));
+		return;
+	}
+
+	DEBUG("removing songs from '%s'\n", path);
+	sqlite3_bind_text(st, 1, path, -1, SQLITE_TRANSIENT);
+	res = sqlite3_step(st);
+	if (res != SQLITE_DONE) {
+		DEBUG("Error deleting '%s' from database: %s\n",
+		    path, sqlite3_errmsg(handle));
+	}
+	sqlite3_finalize(st);
+}
 
 /*
  * Clean up the database:
@@ -55,24 +80,7 @@ mfs_cleanup_db(sqlite3 *handle)
 	
 	while (res == SQLITE_ROW) {
 		path = (const char*)sqlite3_column_text(st, 0);
-		
-		res_ = sqlite3_prepare_v2(handle, "DELETE FROM song WHERE "
-		    "filepath LIKE (?||'%')", -1, &st_, NULL);
-		if (res_ != SQLITE_OK) {
-			DEBUG("Error preparing statement: %s\n",
-			    sqlite3_errmsg(handle));
-			return;
-		}
-
-		DEBUG("removing songs from '%s'\n", path);
-		sqlite3_bind_text(st_, 1, path, -1, SQLITE_TRANSIENT);
-		res_ = sqlite3_step(st_);
-		if (res_ != SQLITE_DONE) {
-			DEBUG("Error deleting '%s' from database: %s\n",
-			    path, sqlite3_errmsg(handle));
-		}
-		sqlite3_finalize(st_);
-		
+		mfs_delete_from_path(handle, path);
 		res = sqlite3_step(st);
 	}
 	sqlite3_finalize(st);
