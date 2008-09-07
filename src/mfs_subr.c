@@ -33,11 +33,12 @@
 #include <dirent.h>
 #include <fuse.h>
 #include <pthread.h>
-
 #include <tag_c.h>
+
+#include <debug.h>
 #include <musicfs.h>
 #include <sqlite3.h>
-#include <debug.h>
+#include <mfs_cleanup_db.h>
 
 #define MFS_HANDLE ((void*)-1)
 
@@ -145,74 +146,6 @@ mfs_insert_path(const char *path, sqlite3 *handle)
 		}
 	}
 	return (0);
-}
-
-/*
- * Clean up the database:
- *
- * - Remove disabled paths
- * - Remove songs in disabled paths
- * - Remove unused artists and genres
- */
-void
-mfs_cleanup_db(sqlite3 *handle)
-{
-	DEBUG("cleaning up db\n");
-	/* sqlite doesn't support deleting from multiple tables at the same time :-( */
-	sqlite3_stmt *st, *st_;
-	int res, res_;
-	const char *path;
-
-	
-	/* Removed songs from inactive paths */
-	res = sqlite3_prepare_v2(handle, "SELECT path FROM path WHERE "
-	    "active = 0", -1, &st, NULL);
-	if (res != SQLITE_OK) {
-		DEBUG("Error preparing statement: %s\n",
-		    sqlite3_errmsg(handle));
-		return;
-	}
-	res = sqlite3_step(st);
-	
-	while (res == SQLITE_ROW) {
-		path = (const char*)sqlite3_column_text(st, 0);
-		
-		res_ = sqlite3_prepare_v2(handle, "DELETE FROM song WHERE "
-		    "filepath LIKE (?||'%')", -1, &st_, NULL);
-		if (res_ != SQLITE_OK) {
-			DEBUG("Error preparing statement: %s\n",
-			    sqlite3_errmsg(handle));
-			return;
-		}
-
-		DEBUG("removing songs from '%s'\n", path);
-		sqlite3_bind_text(st_, 1, path, -1, SQLITE_TRANSIENT);
-		res_ = sqlite3_step(st_);
-		if (res_ != SQLITE_DONE) {
-			DEBUG("Error deleting '%s' from database: %s\n",
-			    path, sqlite3_errmsg(handle));
-		}
-		sqlite3_finalize(st_);
-		
-		res = sqlite3_step(st);
-	}
-	sqlite3_finalize(st);
-	
-	/* Remove the actual paths */
-	res = sqlite3_prepare_v2(handle, "DELETE FROM path WHERE "
-	    "active = 0", -1, &st, NULL);
-	if (res != SQLITE_OK) {
-		DEBUG("Error preparing statement: %s\n",
-		    sqlite3_errmsg(handle));
-		return;
-	}
-	res = sqlite3_step(st);
-	if (res != SQLITE_DONE) {
-		DEBUG("Error deleting inactive paths from db: %s\n",
-		    sqlite3_errmsg(handle));
-		return;
-	}
-	sqlite3_finalize(st);
 }
 
 /*
