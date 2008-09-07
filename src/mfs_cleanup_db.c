@@ -26,8 +26,6 @@
 #include <debug.h>
 #include <musicfs.h>
 
-extern char *db_path;
-
 void
 mfs_delete_from_path(sqlite3 *handle, const char *path) {
 	sqlite3_stmt *st;
@@ -63,8 +61,8 @@ mfs_cleanup_db(sqlite3 *handle)
 {
 	DEBUG("cleaning up db\n");
 	/* sqlite doesn't support deleting from multiple tables at the same time :-( */
-	sqlite3_stmt *st, *st_;
-	int res, res_;
+	sqlite3_stmt *st;
+	int res;
 	const char *path;
 
 	

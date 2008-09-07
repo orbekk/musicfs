@@ -60,7 +60,6 @@ struct lookuphandle {
 	lookup_fn_t *lookup;
 };
 
-char *db_path;
 sqlite3 *handle;
 pthread_mutex_t dblock;
 pthread_mutex_t __debug_lock__;

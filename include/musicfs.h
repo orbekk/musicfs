@@ -28,6 +28,10 @@ struct fuse_args;
 int	mfs_run(int, char **);
 int	mfs_init();
 
+/*
+ * The path to the sqlite database
+ */
+char *db_path;
 
 /* 
  * Functions traversing the underlying filesystem and do operations on the
