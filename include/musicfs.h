@@ -20,6 +20,9 @@
 
 #ifndef _MP3FS_H_
 #define _MP3FS_H_
+
+#include <fuse.h>
+
 struct fuse_args;
 
 int	mfs_run(int, char **);
