@@ -267,7 +267,6 @@ mfs_reload_config()
 	    "SELECT path FROM path");
 	mfs_lookup_finish(lh);
 
-	sqlite3_close(handle);
 	return (0);
 }
 
