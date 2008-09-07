@@ -2,8 +2,10 @@
 
 v. 0.1
 ~~~~~~
-* Better interface (the new .config is pretty good, but needs
+* [FIXED] Better interface (the new .config is pretty good, but needs
   improvement)
+  * 2008-09-08: Added complete support for removing paths from .config
+    (not very useful, but it feels consistent)
 
 * [FIXED] We should implement flush and similar calls we don't currently implement.
   Under some circumstances, high load can force the closing of files or
