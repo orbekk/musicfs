@@ -23,17 +23,15 @@
 
 
 #ifdef DEBUGGING
+#  include <stdlib.h>
 #  include <stdio.h>
 #  define DEBUGPATH "debug.txt"
 extern pthread_mutex_t __debug_lock__;
-FILE *__debug_handle__;
 #  define DEBUG(...) do { \
-			pthread_mutex_lock(&__debug_lock__); \
-		 	__debug_handle__ = fopen(DEBUGPATH, "a"); \
-                     	fprintf (__debug_handle__, __VA_ARGS__); \
-                     	fclose(__debug_handle__); \
-		     	pthread_mutex_unlock(&__debug_lock__); \
-		     } while (0)
+	pthread_mutex_lock(&__debug_lock__);			       \
+	fprintf (stderr, __VA_ARGS__);				       \
+	pthread_mutex_unlock(&__debug_lock__);			       \
+    } while (0)
 #else
 #  define DEBUG(...)
 #endif 
