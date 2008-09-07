@@ -23,7 +23,7 @@
 struct fuse_args;
 
 int	mfs_run(int, char **);
-int	mfs_initscan();
+int	mfs_init();
 
 
 /* 

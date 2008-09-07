@@ -32,6 +32,7 @@
 #include <sys/param.h>
 #include <dirent.h>
 #include <fuse.h>
+#include <pthread.h>
 
 #include <tag_c.h>
 #include <musicfs.h>
@@ -39,6 +40,14 @@
 #include <debug.h>
 
 #define MFS_HANDLE ((void*)-1)
+
+#ifdef SQLITE_THREADED
+#define MFS_DB_LOCK()
+#define MFS_DB_UNLOCK()
+#else
+#define MFS_DB_LOCK() pthread_mutex_lock(&dblock)
+#define MFS_DB_UNLOCK() pthread_mutex_unlock(&dblock)
+#endif
 
 struct lookuphandle {
 	sqlite3 *handle;
@@ -52,6 +61,8 @@ struct lookuphandle {
 
 char *db_path;
 sqlite3 *handle;
+pthread_mutex_t dblock;
+pthread_mutex_t __debug_lock__;
 
 /*
  * Returns the path to $HOME[/extra]
@@ -225,10 +236,12 @@ mfs_reload_config()
 		return (-1);
 	}
 
+	MFS_DB_LOCK();
 	res = sqlite3_open(db_path, &handle);
 	if (res) {
 		DEBUG("Can't open database: %s\n", sqlite3_errmsg(handle));
 		sqlite3_close(handle);
+		MFS_DB_UNLOCK();
 		return (-1);
 	}
 
@@ -238,6 +251,7 @@ mfs_reload_config()
 	if (res != SQLITE_OK) {
 		DEBUG("Error preparing statement: %s\n",
 			  sqlite3_errmsg(handle));
+		MFS_DB_UNLOCK();
 		return (-1);
 	}
 	res = sqlite3_step(st);
@@ -267,31 +281,29 @@ mfs_reload_config()
 	    "SELECT path FROM path");
 	mfs_lookup_finish(lh);
 
+	MFS_DB_UNLOCK();
 	return (0);
 }
 
+
 int
-mfs_initscan()
+mfs_init()
 {
 	int error;
 	db_path = mfs_get_home_path(".mfs.db");
-	/* Open database. */
-	error = sqlite3_open(db_path, &handle);
-	if (error) {
-		DEBUG("Can't open database: %s\n", sqlite3_errmsg(handle));
-		sqlite3_close(handle);
-		return (-1);
-	}
+
+	/* Init locks. */
+	pthread_mutex_init(&dblock, NULL);
+	pthread_mutex_init(&__debug_lock__, NULL);
 
 /* 	error = mfs_insert_path(musicpath, handle); */
 /* 	if (error != 0) */
 /* 		return (error); */
 
 	error = mfs_reload_config();
-	if (error != 0)
+	if (error != 0) {
 		return (error);
-
-	sqlite3_close(handle);
+	}
 	return (0);
 }
 
@@ -678,46 +690,57 @@ mfs_realpath(const char *path, char **realpath) {
 	DEBUG("getting real path for %s\n", path);
 	struct lookuphandle *lh;
 	char *artist, *album, *title;
+	int error;
 
 	lh = NULL;
+	error = 0;
 
 	/* Open a specific track. */
+	MFS_DB_LOCK();
 	if (strncmp(path, "/Tracks", 7) == 0) {
 		switch (mfs_numtoken(path)) {
 		case 2:
 			title = mfs_gettoken(path, 2);
-			if (title == NULL)
+			if (title == NULL) {
+				error = -ENOENT;
 				break;
+			}
 			lh = mfs_lookup_start(0, realpath, mfs_lookup_path,
 			    "SELECT filepath FROM song "
 			    "WHERE (artistname||' - '||title||'.'||extension) LIKE ?");
-			if (lh == NULL)
-				return (-EIO);
+			if (lh == NULL) {
+				error = -EIO;
+				break;
+			}
 			mfs_lookup_insert(lh, title, LIST_DATATYPE_STRING);
 			break;
 		default:
-			return (-ENOENT);
+			error = -ENOENT;
 		}
 	} else if (strncmp(path, "/Albums", 7) == 0) {
 		switch (mfs_numtoken(path)) {
 		case 3:
 			album = mfs_gettoken(path, 2);
+			error = -ENOENT;
 			if (album == NULL)
 				break;
 			title = mfs_gettoken(path, 3);
 			if (title == NULL)
 				break;
+			error = 0;
 			lh = mfs_lookup_start(0, realpath, mfs_lookup_path,
 			    "SELECT filepath FROM song "
 			    "WHERE (title||'.'||extension) LIKE ? AND "
 			    "album LIKE ?");
-			if (lh == NULL)
-				return (-EIO);
+			if (lh == NULL) {
+				error = -EIO;
+				break;
+			}
 			mfs_lookup_insert(lh, title, LIST_DATATYPE_STRING);
 			mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 			break;
 		default:
-			return (-ENOENT);
+			error = -ENOENT;
 		}
 	} else if (strncmp(path, "/Artists", 8) == 0) {
 		switch (mfs_numtoken(path)) {
@@ -727,26 +750,33 @@ mfs_realpath(const char *path, char **realpath) {
 			title  = mfs_gettoken(path, 4);
 			DEBUG("artist(%s) album(%s) title(%s)\n", artist, album, title);
 			if (!(artist && album && title)) {
+				error = -ENOENT;
 				break;
 			}
 			lh = mfs_lookup_start(0, realpath, mfs_lookup_path,
 			    "SELECT filepath FROM song WHERE artistname LIKE ? AND "
 			    "album LIKE ? AND "
 			    "(LTRIM(track||' ')||title||'.'||extension) LIKE ?");
-			if (lh == NULL)
-			    return (-EIO);
+			if (lh == NULL) {
+				error = -EIO;
+				break;
+			}
 			mfs_lookup_insert(lh, artist, LIST_DATATYPE_STRING);
 			mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 			mfs_lookup_insert(lh, title, LIST_DATATYPE_STRING);
 			break;
 		default:
-			return (-ENOENT);
+			error = -ENOENT;
 		}
 	}
 
 	if (lh) {
 		mfs_lookup_finish(lh);
 	}
+
+	MFS_DB_UNLOCK();
+	if (error != 0)
+		return (error);
 	if (*realpath == NULL)
 		return (-ENOMEM);
 	return 0;

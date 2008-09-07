@@ -34,6 +34,7 @@
 #include <sys/param.h>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <tag_c.h>
 #include <musicfs.h>
@@ -228,7 +229,7 @@ static int mfs_truncate(const char *path, off_t size)
 		if (mfsrc == NULL)
 			return (-ENOMEM);
 		res = truncate(mfsrc, size);
-		DEBUG("truncated %s with result: %d\n", mfsrc, res)
+		DEBUG("truncated %s with result: %d\n", mfsrc, res);
 		free(mfsrc);
 		return (res);
 	}
@@ -390,7 +391,7 @@ mfs_run(int argc, char **argv)
 	if (fuse_opt_parse(&args, NULL, NULL, musicfs_opt_proc) != 0)
 		exit (1);
 
-	mfs_initscan();
+	mfs_init();
 
 	ret = 0;
 	ret = fuse_main(args.argc, args.argv, &mfs_ops, NULL);
