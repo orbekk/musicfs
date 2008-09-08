@@ -383,10 +383,9 @@ mfs_run(int argc, char **argv)
 	argv_[argc] = NULL;
 
 	struct fuse_args args = { argc, argv_, 1 };
-
-	/* Until we fix some bugs, these are mandatory */
+	
+	/* Run in single threaded mode */
 	fuse_opt_add_arg(&args, "-s");
-	fuse_opt_add_arg(&args, "-d");
 
 	if (fuse_opt_parse(&args, NULL, NULL, musicfs_opt_proc) != 0)
 		exit (1);
