@@ -12,10 +12,17 @@ Usage
 
 $ make
 
-2. Make the initial configuration with the provided script, and follow
-   the instructions:
+2. Make the initial configuration with the provided script
 
 $ bash initialize.sh
+
+3. Start musicfs
+
+$ ./musicfs <mountdir>
+
+4. Add your music path(s) to <mountdir>/.config
+
+$ echo "/storage/music" >> <mountdir>/.config
 
 
 Screenshot
