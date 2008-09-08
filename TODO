@@ -2,26 +2,10 @@
 
 v. 0.1
 ~~~~~~
-* [FIXED] Better interface (the new .config is pretty good, but needs
-  improvement)
-  * 2008-09-08: Added complete support for removing paths from .config
-    (not very useful, but it feels consistent)
+* Fix track numbers in /Albums
 
-* [FIXED] We should implement flush and similar calls we don't currently implement.
-  Under some circumstances, high load can force the closing of files or
-  something in a similar manner, and we should handle this properly, or else the
-  media player will probably stop playback.
-  * flush and fsync have been implemented, but is not required to do anything
-    since we have reading only currently, so we will have to extend them later.
+* Fix /Genres
 
-- [FIXED] BUG: what to do with songs without tags? 
-  * This has been improved to check if the string is actually empty,
-    instead of just dying. Good enough for v0.1.
-
-- [FIXED] BUG: something is wrong with the offset when reading media files.
-  "Ogg : Page out not synced, we skip some bytes" from mplayer.
-
-  UPDATE: I think this is fixed now.
 
 v. 0.2(?)
 ~~~~~~~~~
