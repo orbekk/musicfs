@@ -6,6 +6,7 @@ v. 0.1
 
 * Fix /Genres
 
+* BUG: fsync errors with /.config
 
 v. 0.2(?)
 ~~~~~~~~~
