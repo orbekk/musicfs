@@ -257,8 +257,12 @@ static int mfs_fsync(const char *path, int datasync,
 					 struct fuse_file_info *fi)
 {
 	int fd;
-
 	DEBUG("fsync path %s\n", path);
+
+	if (strcmp(path, "/.config") == 0) {
+		return (0);
+	}
+
 	fd = (int)fi->fh;
 	/* Fd is not valid, return fsync error. */
 	if (fd < 0)
