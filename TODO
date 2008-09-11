@@ -2,8 +2,6 @@
 
 v. 0.1
 ~~~~~~
-* Fix track numbers in /Albums
-
 * Fix /Genres
 
 * BUG: fsync errors with /.config

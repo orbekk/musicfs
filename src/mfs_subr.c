@@ -661,9 +661,9 @@ mfs_realpath(const char *path, char **realpath) {
 				break;
 			error = 0;
 			lh = mfs_lookup_start(0, realpath, mfs_lookup_path,
-			    "SELECT filepath FROM song "
-			    "WHERE (title||'.'||extension) LIKE ? AND "
-			    "album LIKE ?");
+			    "SELECT filepath FROM song WHERE "
+			    "LTRIM(track||' ')||title||'.'||extension LIKE ? "
+			    "AND album LIKE ?");
 			if (lh == NULL) {
 				error = -EIO;
 				break;
@@ -805,8 +805,8 @@ mfs_lookup_album(const char *path, struct filler_data *fd)
 		if (album == NULL)
 			break;
 		lh  = mfs_lookup_start(0, fd, mfs_lookup_list,
-		    "SELECT DISTINCT title||'.'||extension FROM song "
-		    "WHERE album LIKE ?");
+		    "SELECT DISTINCT LTRIM(track||' ')||title||'.'||extension "
+		    "FROM song WHERE album LIKE ?");
 		mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
 	}
