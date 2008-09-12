@@ -27,94 +27,75 @@ $ echo "/storage/music" >> <mountdir>/.config
 
 Screenshot
 ~~~~~~~~~~
-This is a "screenshot" (or dump, or whatever) of musicfs, displaying
-the hierarchy we expose. /tmp/mp3s is my mountpoint, and the paths are
-added to my music collection when I append them to .config.
 
-vannlilje:/tmp/mp3s% echo "/storage/musikk/Beady_Belle/Belvedere" >> .config
-vannlilje:/tmp/mp3s% echo "/storage/musikk/Micatone" >> .config
-vannlilje:/tmp/mp3s% tree
+This is a "screenshot" (not really, but it sounds cool) of musicfs,
+displaying the hierarchy we expose. /tmp/music is my mountpoint, and
+the paths are added to my music collection when I append them to
+.config.
+
+vannlilje:/tmp/music% echo ~/Music/mfs_demo > .config
+vannlilje:/tmp/music% tree
 .
 |-- Albums
-|   |-- Belle et Fou (Original Soundtrack)
-|   |   `-- D-D-D-D-Dance.mp3
-|   |-- Belvedere
-|   |   |-- A Touch Of Paradise.mp3
-|   |   |-- Apron Strings.mp3
-|   |   |-- Boiling Milk.mp3
-|   |   |-- Intermission Music (Feat. Jamie Cullum).mp3
-|   |   |-- Self-Fulfilling (Feat. India Arie).mp3
-|   |   |-- Tower Of Lament.mp3
-|   |   |-- Tranquil Flight.mp3
-|   |   |-- Two-Faced.mp3
-|   |   `-- Viscous Ocean.mp3
-|   `-- Nomad Songs
-|       |-- Circle.mp3
-|       |-- Mars Reprise.mp3
-|       |-- Mars.mp3
-|       |-- Nomad.mp3
-|       |-- Out Of The Game.mp3
-|       |-- Trouble Boy (feat. Ear aka Demba Nabé).mp3
-|       |-- Where I Am: Part 1.mp3
-|       |-- Where I Am: Part 2.mp3
-|       |-- Yeah, Yeah, Yeah (That´s The Way It Goes).mp3
-|       `-- You´ve Taken All.mp3
+|   `-- This Village
+|       |-- 01 You Make Me Wonder.ogg
+|       |-- 02 This Village.ogg
+|       |-- 03 Love.ogg
+|       |-- 04 While We Want.ogg
+|       |-- 05 Bound.ogg
+|       |-- 06 Southpaw.ogg
+|       |-- 07 What I Need.ogg
+|       |-- 08 Tomorrow.ogg
+|       |-- 09 We Don't Know If Eyes Can See The Same.ogg
+|       |-- 10 Move Out Of Line.ogg
+|       |-- 11 Thinking Of You.ogg
+|       `-- 12 Heaven.ogg
 |-- Artists
-|   |-- Beady Belle
-|   |   `-- Belvedere
-|   |       |-- 01 Apron Strings.mp3
-|   |       |-- 02 A Touch Of Paradise.mp3
-|   |       |-- 03 Tower Of Lament.mp3
-|   |       |-- 04 Self-Fulfilling (Feat. India Arie).mp3
-|   |       |-- 05 Tranquil Flight.mp3
-|   |       |-- 06 Intermission Music (Feat. Jamie Cullum).mp3
-|   |       |-- 07 Viscous Ocean.mp3
-|   |       |-- 08 Boiling Milk.mp3
-|   |       `-- 09 Two-Faced.mp3
-|   |-- Jazzanova
-|   |   `-- Belle et Fou (Original Soundtrack)
-|   |       `-- 07 D-D-D-D-Dance.mp3
-|   `-- Micatone
-|       `-- Nomad Songs
-|           |-- 01 Mars.mp3
-|           |-- 02 Out Of The Game.mp3
-|           |-- 03 Where I Am: Part 1.mp3
-|           |-- 04 Where I Am: Part 2.mp3
-|           |-- 05 Trouble Boy (feat. Ear aka Demba Nabé).mp3
-|           |-- 06 Nomad.mp3
-|           |-- 07 Yeah, Yeah, Yeah (That´s The Way It Goes).mp3
-|           |-- 09 You´ve Taken All.mp3
-|           |-- 10 Circle.mp3
-|           `-- 11 Mars Reprise.mp3
+|   |-- Lester
+|   |   `-- This Village
+|   |       |-- 01 You Make Me Wonder.ogg
+|   |       |-- 02 This Village.ogg
+|   |       |-- 03 Love.ogg
+|   |       |-- 04 While We Want.ogg
+|   |       |-- 05 Bound.ogg
+|   |       |-- 06 Southpaw.ogg
+|   |       |-- 07 What I Need.ogg
+|   |       |-- 08 Tomorrow.ogg
+|   |       |-- 09 We Don't Know If Eyes Can See The Same.ogg
+|   |       |-- 10 Move Out Of Line.ogg
+|   |       |-- 11 Thinking Of You.ogg
+|   |       `-- 12 Heaven.ogg
+|   `-- Metropolitan
 |-- Genres
-|   |-- Electronic
-|   |   |-- Belle et Fou (Original Soundtrack)
-|   |   `-- Nomad Songs
-|   `-- Jazz
-|       `-- Belvedere
+|   `-- Neo-Soul
+|       `-- This Village
+|           |-- 01 You Make Me Wonder.ogg
+|           |-- 02 This Village.ogg
+|           |-- 03 Love.ogg
+|           |-- 04 While We Want.ogg
+|           |-- 05 Bound.ogg
+|           |-- 06 Southpaw.ogg
+|           |-- 07 What I Need.ogg
+|           |-- 08 Tomorrow.ogg
+|           |-- 09 We Don't Know If Eyes Can See The Same.ogg
+|           |-- 10 Move Out Of Line.ogg
+|           |-- 11 Thinking Of You.ogg
+|           `-- 12 Heaven.ogg
 `-- Tracks
-    |-- Beady Belle - A Touch Of Paradise.mp3
-    |-- Beady Belle - Apron Strings.mp3
-    |-- Beady Belle - Boiling Milk.mp3
-    |-- Beady Belle - Intermission Music (Feat. Jamie Cullum).mp3
-    |-- Beady Belle - Self-Fulfilling (Feat. India Arie).mp3
-    |-- Beady Belle - Tower Of Lament.mp3
-    |-- Beady Belle - Tranquil Flight.mp3
-    |-- Beady Belle - Two-Faced.mp3
-    |-- Beady Belle - Viscous Ocean.mp3
-    |-- Jazzanova - D-D-D-D-Dance.mp3
-    |-- Micatone - Circle.mp3
-    |-- Micatone - Mars Reprise.mp3
-    |-- Micatone - Mars.mp3
-    |-- Micatone - Nomad.mp3
-    |-- Micatone - Out Of The Game.mp3
-    |-- Micatone - Trouble Boy (feat. Ear aka Demba Nabé).mp3
-    |-- Micatone - Where I Am: Part 1.mp3
-    |-- Micatone - Where I Am: Part 2.mp3
-    |-- Micatone - Yeah, Yeah, Yeah (That´s The Way It Goes).mp3
-    `-- Micatone - You´ve Taken All.mp3
+    |-- Lester - Bound.ogg
+    |-- Lester - Heaven.ogg
+    |-- Lester - Love.ogg
+    |-- Lester - Move Out Of Line.ogg
+    |-- Lester - Southpaw.ogg
+    |-- Lester - Thinking Of You.ogg
+    |-- Lester - This Village.ogg
+    |-- Lester - Tomorrow.ogg
+    |-- Lester - We Don't Know If Eyes Can See The Same.ogg
+    |-- Lester - What I Need.ogg
+    |-- Lester - While We Want.ogg
+    `-- Lester - You Make Me Wonder.ogg
 
-18 directories, 60 files
+10 directories, 48 files
 
 
 Dependencies
