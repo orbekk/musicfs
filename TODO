@@ -9,6 +9,7 @@ v. 0.2(?)
 * FEATURE: Inotify/kqueue support for watching music directories
 
   * Take a look at http://mark.heily.com/pnotify/.
+  * For FreeBSD: kqueue(2)
 
   
 * FEATURE: Songs without tags (or with empty tags) 
