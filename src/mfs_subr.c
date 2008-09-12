@@ -506,6 +506,8 @@ mfs_lookup_start(int field, void *data, lookup_fn_t *fn, const char *query)
 	ret = sqlite3_prepare_v2(lh->handle, query, -1, &lh->st, NULL);
 	if (ret != SQLITE_OK) {
 		free(lh);
+		DEBUG("Error preparing statement: %s\n",
+		    sqlite3_errmsg(handle));
 		return (NULL);
 	}
 	lh->query = query;
@@ -621,7 +623,7 @@ int
 mfs_realpath(const char *path, char **realpath) {
 	DEBUG("getting real path for %s\n", path);
 	struct lookuphandle *lh;
-	char *artist, *album, *title;
+	char *genre, *artist, *album, *title;
 	int error;
 
 	lh = NULL;
@@ -661,9 +663,9 @@ mfs_realpath(const char *path, char **realpath) {
 				break;
 			error = 0;
 			lh = mfs_lookup_start(0, realpath, mfs_lookup_path,
-			    "SELECT filepath FROM song "
-			    "WHERE (title||'.'||extension) LIKE ? AND "
-			    "album LIKE ?");
+			    "SELECT filepath FROM song WHERE "
+			    "LTRIM(track||' ')||title||'.'||extension LIKE ? "
+			    "AND album LIKE ?");
 			if (lh == NULL) {
 				error = -EIO;
 				break;
@@ -694,6 +696,34 @@ mfs_realpath(const char *path, char **realpath) {
 				break;
 			}
 			mfs_lookup_insert(lh, artist, LIST_DATATYPE_STRING);
+			mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
+			mfs_lookup_insert(lh, title, LIST_DATATYPE_STRING);
+			break;
+		default:
+			error = -ENOENT;
+		}
+	} else if (strncmp(path, "/Genres", 7) == 0) {
+		switch (mfs_numtoken(path)) {
+		case 4:
+			genre = mfs_gettoken(path, 2);
+			album = mfs_gettoken(path, 3);
+			title = mfs_gettoken(path, 4);
+			DEBUG("genre(%s) album(%s) title(%s)\n", genre, album,
+			    title);
+			if (!(genre && album && title)) {
+				error = -ENOENT;
+				break;
+			}
+			lh = mfs_lookup_start(0, realpath, mfs_lookup_path,
+			    "SELECT filepath FROM song WHERE genrename LIKE ? "
+			    "AND album LIKE ? AND "
+			    "(LTRIM(track||' ')||title||'.'||extension) "
+			    "LIKE ?");
+			if (lh == NULL) {
+				error = -EIO;
+				break;
+			}
+			mfs_lookup_insert(lh, genre, LIST_DATATYPE_STRING);
 			mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 			mfs_lookup_insert(lh, title, LIST_DATATYPE_STRING);
 			break;
@@ -805,8 +835,8 @@ mfs_lookup_album(const char *path, struct filler_data *fd)
 		if (album == NULL)
 			break;
 		lh  = mfs_lookup_start(0, fd, mfs_lookup_list,
-		    "SELECT DISTINCT title||'.'||extension FROM song "
-		    "WHERE album LIKE ?");
+		    "SELECT DISTINCT LTRIM(track||' ')||title||'.'||extension "
+		    "FROM song WHERE album LIKE ?");
 		mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
 	}
@@ -890,9 +920,10 @@ mfs_lookup_genre(const char *path, struct filler_data *fd)
 		if (album == NULL)
 			break;
 		lh = mfs_lookup_start(0, fd, mfs_lookup_list,
-		    "SELECT title||'.'||extension FROM song, genre WHERE"
-		    " song.genrename = genre.name AND genre.name LIKE ? "
-		    " AND song.album LIKE ?");
+		    "SELECT LTRIM(track||' ')||title||'.'||extension FROM "
+		    "song, genre WHERE "
+		    "song.genrename = genre.name AND genre.name LIKE ? "
+		    "AND song.album LIKE ?");
 		mfs_lookup_insert(lh, genre, LIST_DATATYPE_STRING);
 		mfs_lookup_insert(lh, album, LIST_DATATYPE_STRING);
 		break;
