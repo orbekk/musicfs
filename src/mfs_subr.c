@@ -406,8 +406,7 @@ mfs_scan(const char *filepath)
 			/* Drop the '.' */
 			extension++;
 		
-		if (mfs_empty(title) || mfs_empty(genre) || mfs_empty(artist) ||
-		    mfs_empty(album))
+		if (mfs_empty(title) || mfs_empty(artist) || mfs_empty(album))
 			break;
 
 		/* First find out if it exists. */
