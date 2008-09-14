@@ -1,28 +1,41 @@
 -*- mode: outline -*-
 
-v. 0.2(?)
-~~~~~~~~~
+v. 0.2
+~~~~~~
 * FEATURE: Inotify/kqueue support for watching music directories
 
   * Take a look at http://mark.heily.com/pnotify/.
   * For FreeBSD: kqueue(2)
 
-  
 * FEATURE: Songs without tags (or with empty tags) 
-  * We put all songs not having complete tags in an Unsorted folder, with the
-    real filename as the name. Perhaps having a flag in the database tables
-    indicating that the information is not complete.
-  * We avoid including them in the database at all, which is what we basically
-    do now, but just a bit more fool proof perhaps.
+  Put all songs not having complete tags in an Unsorted folder, with
+  the real filename as the name. 
+  * We may be missing just some of the tags, should we have
 
+    /Unsorted/Missing Genre/*
+    /Unsorted/Missing Artist/*
+    /Unsorted/Missing multiple/*
+
+    ...etc?
+
+  * Do unsorted files go in an own table? The song table doesn't
+    really fit, since it has (title,artist,album,year) as primary key.
+  * Only care about files with specific extensions
+    (ogg,flac,mp3,aac,..., which TagLib supports)
+
+* FEATURE: Re-tagging:
+  Implement support for changing tags by moving a file around in the
+  directory tree. (eg. cd /Artists; mv jazzanova Jazzanova)
+
+
+Ideas for the future
+~~~~~~~~~~~~~~~~~~~~
 * Advanced configuration, allowing custom paths. 
-This should be done in the configuration file, so something like
-"/Artists/%artist%/%album%/%trackno% %title%.%extension%" (with a
-somewhat prettier syntax ;) would produce the current Artists
-directory.
+  This should be done in the configuration file, so something like
+  "/Artists/%artist%/%album%/%trackno% %title%.%extension%" (with a
+  somewhat prettier syntax ;) would produce the current Artists
+  directory.
 
-* Implement support for changing tags by moving a file around in the directory
-  tree.
 * Implement support for changing encoding my changing file name.
 * Implement support for encoding/decoding when reading the data? (embedded
   decoder in the file system, removing the need for encoder support in the
@@ -49,3 +62,8 @@ directory.
   problems when using file I/O in not debugging mode.
 
 * File handle stuff for .config (this is a matter of style, not performance)
+
+* FUTURE: Playlist support?
+  * A /Playlist directory, where you can create folders (playlists)
+    and add links to files elsewhere in the tree. Some nice things
+    could be done here.
