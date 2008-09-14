@@ -1,9 +1,5 @@
 -*- mode: outline -*-
 
-v. 0.1
-~~~~~~
-* Done? :-)
-
 v. 0.2(?)
 ~~~~~~~~~
 * FEATURE: Inotify/kqueue support for watching music directories
