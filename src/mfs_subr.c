@@ -231,11 +231,14 @@ mfs_init()
 /* 	error = mfs_insert_path(musicpath, handle); */
 /* 	if (error != 0) */
 /* 		return (error); */
-
-	error = mfs_reload_config();
-	if (error != 0) {
-		return (error);
-	}
+	
+	/* Scan the music initially. (Disabled, since it's really
+	   annoying with huge collections) */
+/* 	error = mfs_reload_config(); */
+/* 	if (error != 0) { */
+/* 		return (error); */
+/* 	} */
+	
 	return (0);
 }
 
@@ -393,6 +396,7 @@ mfs_scan(const char *filepath)
 		}
 	} while (0);
 
+	
 	/* Finally, insert song. */
 	do {
 		title = taglib_tag_title(tag);

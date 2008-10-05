@@ -383,7 +383,7 @@ mfs_run(int argc, char **argv)
 	/* Make a copy of the arguments */
 	char **argv_ = malloc(sizeof(char*) * (argc+1));
 	for (int i = 0; i < argc; i++)
-			asprintf(argv_+i, argv[i]);
+		asprintf(argv_+i, argv[i]);
 	argv_[argc] = NULL;
 
 	struct fuse_args args = { argc, argv_, 1 };
