@@ -20,28 +20,29 @@
  * A copy of the license can typically be found in COPYING
  */
 
-#define FUSE_USE_VERSION 26
+#include <sys/types.h>
+#include <sys/time.h>
+#include <dirent.h>
+#include <sys/param.h>
+#include <sys/uio.h>
+#include <unistd.h>
+#include <pthread.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <err.h>
 
-#include <sys/types.h>
-#include <sys/time.h>
-#include <dirent.h>
+#include <fusever.h>
 #include <fuse.h>
-#include <sys/param.h>
-#include <sys/uio.h>
-#include <unistd.h>
-#include <pthread.h>
-
 #include <tag_c.h>
 #include <musicfs.h>
 #include <debug.h>
 
 static int mfs_getattr (const char *path, struct stat *stbuf)
 {
+	
 	char *realpath;
 	int res;
 

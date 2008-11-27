@@ -1,20 +1,17 @@
-CFLAGS = -Wall -std=c99 -D_BSD_SOURCE -I/usr/local/include/ -Iinclude/	\
-	-lpthread -g `pkg-config fuse --cflags` `pkg-config taglib	\
-	--cflags` -DDEBUGGING -DSQLITE_THREADED
+SUBDIRS= src
+TARGET= musicfs
 
-LD_ADD  = -L/usr/local/lib -lsqlite3 -ltag_c \
-	`pkg-config fuse --libs`
-CC = gcc
+.PHONY: all
+all: $(TARGET)
 
-C_FILES = $(wildcard src/*.c)
-OBJS    = $(C_FILES:.c=.o) \
+# A bit of a hack..
+$(TARGET): $(SUBDIRS)
+	cp src/$(TARGET) .
 
-PROGRAM = musicfs
-
-all: $(PROGRAM)
-
-$(PROGRAM): $(OBJS)
-	$(CC) -o $@ $+ $(LD_ADD)
+.PHONY: subdirs $(SUBDIRS)
+$(SUBDIRS):
+	$(MAKE) -C $@
 
 clean:
-	rm -f $(PROGRAM) $(OBJS) *~
+	for d in $(SUBDIRS); do ($(MAKE) -C $$d clean); done
+	rm -f $(TARGET)

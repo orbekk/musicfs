@@ -20,10 +20,10 @@
  * A copy of the license can typically be found in COPYING
  */
 
-#define FUSE_USE_VERSION 26
-
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <fusever.h>
 #include <fuse.h>
 #include <fuse_opt.h>
 #include <musicfs.h>

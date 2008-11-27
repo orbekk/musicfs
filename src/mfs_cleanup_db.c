@@ -20,6 +20,7 @@
  * A copy of the license can typically be found in COPYING
  */
 
+#include <fusever.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

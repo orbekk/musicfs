@@ -20,21 +20,20 @@
  * A copy of the license can typically be found in COPYING
  */
 
-/* Miscellaneous subroutines for musicfs. */
-#define FUSE_USE_VERSION 26
+#include <sys/types.h>
+#include <sys/param.h>
+#include <dirent.h>
+#include <pthread.h>
+
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <err.h>
 
-#include <sys/types.h>
-#include <sys/param.h>
-#include <dirent.h>
+#include <fusever.h>
 #include <fuse.h>
-#include <pthread.h>
 #include <tag_c.h>
-
 #include <debug.h>
 #include <musicfs.h>
 #include <sqlite3.h>
