@@ -1,0 +1,114 @@
+.\"	$OpenBSD: mdoc.template,v 1.9 2004/07/02 10:36:57 jmc Exp $
+.\"
+.Dd July 24, 2007
+.Dt pnotify 3
+.Os
+.Sh NAME
+.Nm pnotify
+.Nd monitor filesystem events
+.Sh SYNOPSIS
+.In pnotify.h
+.Pp
+.Fd int pnotify_init(struct pnotify_cb *ctl);
+.Fd int pnotify_add_watch(struct pnotify_cb *ctl, const char *pathname, int mask);
+.Fd int pnotify_rm_watch(struct pnotify_cb *ctl, int wd);
+.Fd int pnotify_get_event(struct pnotify_event *evt, struct pnotify_cb *ctl);
+.Fd int pnotify_free(struct pnotify_cb *ctl);
+.Pp
+.Bd -literal
+struct pnotify_event {
+        int       wd;
+        int       mask;
+        char      name[NAME_MAX + 1];
+};
+.Ed
+
+.Sh DESCRIPTION
+The
+.Nm
+library provides a portable way to monitor filesystem events. It closely resembles
+the inotify(7) kernel subsystem in Linux, but is implemented as a userspace library
+to support other kernel mechanisms such as kqueue(4).
+.Pp
+.Fn pnotify_init
+initializes a pnotify control block.  This structure contains the current state of events and watches, and must be initialized before it can be used.
+.Pp
+.Fn pnotify_add_watch
+adds a watch for a given file or directory. The mask parameter is composed of one
+or more bitflags from the following list of events:
+.Bl -column "Flag" "Meaning" -offset indent
+.It Sy PN_ACCESS Ta "The access time (atime) has been modified."
+.It Sy PN_CREATE Ta "A file was created in the directory."
+.It Sy PN_DELETE Ta "The file was deleted."
+.It Sy PN_MODIFY Ta "The modification time (mtime) has been modified."
+.El
+.Pp
+When calling
+.Fn pnotify_add_watch
+the following flags may also be used:
+.Bl -column "Flag" "Meaning" -offset indent
+.It Sy PN_ALL_EVENTS Ta "Monitor all events."
+.It Sy PN_ONESHOT Ta "Delete the watch after an event occurs."
+.El
+
+.Fn pnotify_rm_watch
+removes a watch from the watchlist.
+
+.Fn pnotify_get_event
+blocks until an event occurs, and fills the pnotify_event structure with information
+about the event.  If an error occurs in the underlying kernel event queue, an
+event is returned with the PN_ERROR flag set.
+
+.Fn pnotify_free
+frees all of the memory associated with a control block and closes the kernel event
+descriptor.
+
+.Sh RETURN VALUES
+.Fn pnotify_add_watch
+returns a positive integer that represents a unique watch descriptor, or -1 if an error occurs.
+.Pp
+All other functions return zero if successful, or -1 if an error occurs.
+.Sh EXAMPLES
+
+The following example creates a watch on the /tmp directory and prints the 
+names of files that are created or deleted within the directory.
+.Bd -literal
+struct pnotify_cb ctl;
+struct pnotify_event evt;
+
+pnotify_init(&ctl);
+pnotify_add_watch(&ctl, "/tmp", PN_ALL_EVENTS);
+while (pnotify_get_event(&evt, &ctl, NULL) == 0) {
+	if (evt.mask & PN_CREATE) 
+		printf("file created: %s", evt.name);
+	if (evt.mask & PN_DELETE) 
+		printf("file deleted: %s", evt.name);
+	if (evt.mask & PN_ERROR) {
+		printf("an error occurred");
+		break;
+	}
+}
+pnotify_free(&ctl);
+.Ed
+
+.Sh THREADSAFETY
+All
+.Nm
+functions are fully reentrant and may be used in multithreaded programs. 
+A single
+.Nm
+control block (struct pnotify_cb) should not be shared by multiple threads
+unless it is protected by a mutex.
+
+.Sh SEE ALSO
+.Xr kqueue 4
+.Xr inotify 7
+
+.\" .Sh STANDARDS
+.Sh HISTORY
+pnotify was first released on July 25th, 2007 with support for inotify and kqueue.
+.Sh AUTHORS
+Mark Heily <devel@heily.com>
+.\" .Sh CAVEATS
+.\" .Sh BUGS
+.\"kqueue(4) support is buggy and only works properly with PN_CREATE events.
