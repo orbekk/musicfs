@@ -220,7 +220,7 @@ mfs_reload_config()
 int
 mfs_init()
 {
-	int error;
+/*	int error;*/
 	db_path = mfs_get_home_path(".mfs.db");
 
 	/* Init locks. */
