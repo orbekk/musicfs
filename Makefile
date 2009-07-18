@@ -1,4 +1,4 @@
-SUBDIRS= pnotify src
+SUBDIRS= src
 TARGET= musicfs
 
 .PHONY: all
