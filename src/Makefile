@@ -7,7 +7,7 @@ LDFLAGS= -L/usr/local/lib
 LIBS= -lsqlite3 -ltag_c -lpthread `pkg-config fuse --libs`
 CC= gcc
 LD= gcc
-SRCS= mfs_cleanup_db.c mfs_subr.c mfs_vnops.c musicfs.c
+SRCS= mfs_cleanup_db.c mfs_subr.c mfs_vnops.c musicfs.c mfs_notify.c
 OBJS= $(SRCS:.c=.o)
 
 PROGRAM = musicfs
