@@ -26,4 +26,4 @@ struct fuse_args;
 
 void mfs_cleanup_db(sqlite3 *handle);
 
-#endif
+#endif /* !_MFS_CLEANUP_DB_ */

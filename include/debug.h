@@ -37,4 +37,4 @@ extern pthread_mutex_t __debug_lock__;
 #endif 
 
 
-#endif
+#endif /* !_DEBUG_H_ */

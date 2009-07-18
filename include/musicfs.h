@@ -18,8 +18,8 @@
  * A copy of the license can typically be found in COPYING
  */
 
-#ifndef _MP3FS_H_
-#define _MP3FS_H_
+#ifndef _MUSICFS_H_
+#define _MUSICFS_H_
 
 #include <fuse.h>
 
@@ -79,4 +79,4 @@ int      mfs_reload_config();
 char    *mfs_get_home_path(const char *);
 
 enum mfs_filetype mfs_get_filetype(const char *);
-#endif
+#endif /* !_MUSICFS_H_ */
